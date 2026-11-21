@@ -1,0 +1,130 @@
+@import "tailwindcss";
+
+/*
+ * Aegis design: deep-navy layers with emerald for productive money.
+ * - Surfaces step up with elevation: canvas → surface (cards, sidebar) → raised (rows, inner
+ *   panels) → overlay (hover, active) → highest; `well` is the recessed input/stat ground.
+ * - Emerald (`accent-*`) marks credits, returns and the primary action; indigo marks
+ *   structural tags; amber (`warn`) marks money under review; salmon (`loss`) marks debits.
+ * - Display type is Plus Jakarta Sans, data and body Inter with tabular figures.
+ */
+@theme {
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-jakarta), var(--font-inter), ui-sans-serif, sans-serif;
+
+  /* Wide desktop: where the dashboards split into ledger and side column. A theme breakpoint
+     (unlike an arbitrary min-[…] variant) is ordered after lg/xl, so it reliably overrides them. */
+  --breakpoint-wide: 87.5rem;
+
+  --color-canvas: #051424;
+  --color-well: #010f1f;
+  --color-sidebar: #0d1c2d;
+  --color-surface: #0d1c2d;
+  --color-raised: #122131;
+  --color-overlay: #1c2b3c;
+  --color-highest: #273647;
+  --color-line: #1c2b3c;
+  --color-line-strong: #273647;
+
+  --color-fg: #d4e4fa;
+  --color-muted: #bbcabf;
+  --color-subtle: #86948a;
+
+  --color-accent-300: #6ffbbe;
+  --color-accent-400: #4edea3;
+  --color-accent-500: #10b981;
+  --color-accent-600: #059669;
+  --color-accent-ink: #003824;
+  --color-accent-deep: #002113;
+
+  --color-indigo: #c0c1ff;
+  --color-indigo-strong: #3131c0;
+
+  --color-gain: #4edea3;
+  --color-loss: #ffb4ab;
+  --color-warn: #ffb95f;
+
+  /* Donut slices; validated as a pair on the card surface. */
+  --color-chart-free: #0fa877;
+  --color-chart-locked: #6b6ef0;
+}
+
+/* Uppercase micro-label for metric names, table heads and states. */
+@utility label-caps {
+  font-size: 11px;
+  line-height: 16px;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    background: var(--color-canvas);
+    color: var(--color-fg);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-accent-400);
+    outline-offset: 2px;
+  }
+}
+
+/* Amounts line up vertically in tables and lists. */
+.amount {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings:
+    "tnum" 1,
+    "cv05" 1;
+  white-space: nowrap;
+}
+
+/* Booking references, IBANs and wallet addresses: fixed-width figures and a slashed zero keep characters apart. */
+.reference {
+  font-variant-numeric: tabular-nums slashed-zero;
+  letter-spacing: 0.02em;
+}
+
+/* Soft emerald and indigo light behind hero cards, as in the design's glass panels. */
+.ambient-glow {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+.ambient-glow::before,
+.ambient-glow::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  border-radius: 9999px;
+  filter: blur(48px);
+  pointer-events: none;
+}
+.ambient-glow::before {
+  top: -3rem;
+  right: -2.5rem;
+  width: 11rem;
+  height: 11rem;
+  background: color-mix(in srgb, var(--color-accent-400) 12%, transparent);
+}
+.ambient-glow::after {
+  bottom: -3rem;
+  left: -3rem;
+  width: 10rem;
+  height: 10rem;
+  background: color-mix(in srgb, var(--color-indigo-strong) 22%, transparent);
+}
+
+/* The mobile dock sits above the home indicator. */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Horizontal nav on small screens scrolls without a visible scrollbar. */
+.scrollbar-none {
+  scrollbar-width: none;
+}
