@@ -327,6 +327,26 @@ Use a managed PostgreSQL (AWS RDS, DigitalOcean, Neon, Supabase, …) and Redis 
 2. Run migrations once per release: `docker build --target tooling -t investment-pool-tooling . && docker run --rm -e DATABASE_URL=… -e ADMIN_EMAIL=… -e ADMIN_PASSWORD=… investment-pool-tooling`
 3. Run the app container with `DATABASE_URL` and `REDIS_URL` set, behind HTTPS.
 
+### Demo data for a presentation
+
+For a separate demo installation (e.g. for a client), on an **empty** pool, i.e. a fresh database after the migrations and the admin seed:
+
+```bash
+npm run db:seed:demo                                   # local
+docker compose run --rm migrate npm run db:seed:demo   # Docker
+```
+
+It adds six demo investors (`anna.becker@example.com` … `felix.neumann@example.com`). Their password is `DEMO_PASSWORD` from the environment, or `demo-investor-2026` if not set. The data covers:
+- four months of reconciled deposits and two paid-out withdrawals;
+- four booked months, one of them a loss;
+- open requests for the approval queue, with one investor having three so the queue groups them;
+- a deactivated investor;
+- a new investor with a zero balance, who sees the welcome popup.
+
+Value dates follow the demo timeline. Booking times in the journal and the activity log are the time the script ran.
+
+The ledger is append-only, so demo data can never be removed. The script therefore refuses to run as soon as the pool has an investor or a booked month. Use it on a demo installation only, never on the real database.
+
 ## Testing
 
 ```bash
