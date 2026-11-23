@@ -26,7 +26,8 @@ function describeEntry({ entityType, entityId, metadata }: AuditLogRow, { messag
   if (typeof metadata.receivedOn === "string") {
     details.push(messages.deposits.receivedOn(format.calendarDate(metadata.receivedOn)));
   }
-  if (entityType === "user" && typeof metadata.investorName === "string") {
+  // Entries about an investor, and exports of one investor's statement.
+  if ((entityType === "user" || entityType === "report") && typeof metadata.investorName === "string") {
     const code = typeof metadata.investorCode === "string" ? ` (${metadata.investorCode})` : "";
     details.push(`${metadata.investorName}${code}`);
   }
@@ -65,7 +66,13 @@ function describeChanges(changes: unknown, labels: { name: string; email: string
   });
 }
 
-export async function ActivityLogTable({ entries }: { entries: AuditLogRow[] }) {
+type ActivityLogTableProps = {
+  entries: AuditLogRow[];
+  /** Leave out the user column, e.g. in one investor's own log where every entry is theirs. */
+  showActor?: boolean;
+};
+
+export async function ActivityLogTable({ entries, showActor = true }: ActivityLogTableProps) {
   const i18n = await getI18n();
   const { messages, format } = i18n;
   const text = messages.audit;
@@ -78,7 +85,7 @@ export async function ActivityLogTable({ entries }: { entries: AuditLogRow[] }) 
       <thead>
         <tr>
           <TableHeaderCell>{text.columns.time}</TableHeaderCell>
-          <TableHeaderCell>{text.columns.actor}</TableHeaderCell>
+          {showActor ? <TableHeaderCell>{text.columns.actor}</TableHeaderCell> : null}
           <TableHeaderCell>{text.columns.action}</TableHeaderCell>
           <TableHeaderCell>{text.columns.details}</TableHeaderCell>
           <TableHeaderCell>{text.columns.ipAddress}</TableHeaderCell>
@@ -88,18 +95,20 @@ export async function ActivityLogTable({ entries }: { entries: AuditLogRow[] }) 
         {entries.map((entry) => (
           <tr key={entry.id}>
             <TableCell className="whitespace-nowrap">{format.dateTime(entry.createdAt)}</TableCell>
-            <TableCell>
-              {entry.actorName ? (
-                <>
-                  <p className="font-medium text-fg">
-                    {entry.actorName} <InvestorCode code={entry.actorInvestorCode} />
-                  </p>
-                  <p className="text-xs text-subtle">{entry.actorEmail}</p>
-                </>
-              ) : (
-                <span className="text-subtle">{text.system}</span>
-              )}
-            </TableCell>
+            {showActor ? (
+              <TableCell>
+                {entry.actorName ? (
+                  <>
+                    <p className="font-medium text-fg">
+                      {entry.actorName} <InvestorCode code={entry.actorInvestorCode} />
+                    </p>
+                    <p className="text-xs text-subtle">{entry.actorEmail}</p>
+                  </>
+                ) : (
+                  <span className="text-subtle">{text.system}</span>
+                )}
+              </TableCell>
+            ) : null}
             <TableCell className="whitespace-nowrap">{text.actions[entry.action] ?? entry.action}</TableCell>
             <TableCell className="text-xs text-muted">
               <ActivityDetails details={describeEntry(entry, i18n)} emptyValue={messages.common.emptyValue} />

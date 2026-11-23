@@ -1,11 +1,11 @@
 import "server-only";
-import { and, eq, ne, sql, type SQL } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull, isNull, ne, sql, type SQL } from "drizzle-orm";
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import type { IsoDate } from "@/lib/calendar";
 import { APP_TIME_ZONE } from "@/lib/format";
-import { ACCRUAL_DELAY_DAYS, MINIMUM_TERM_DAYS, type CapitalChange } from "@/lib/returns";
+import { ACCRUAL_DELAY_DAYS, MINIMUM_TERM_DAYS, type CapitalChange, type PausedRange } from "@/lib/returns";
 import type { DbExecutor } from "@/server/db/client";
-import { deposits, ledgerEntries, returnPeriods, withdrawals } from "@/server/db/schema";
+import { accounts, auditLogs, deposits, ledgerEntries, returnPeriods, withdrawals } from "@/server/db/schema";
 
 // SQL counterparts of the rules in `src/lib/returns.ts`. The day counts are code constants,
 // inlined as literals so Postgres can resolve `date + integer`.
@@ -30,11 +30,16 @@ const accrualStart = sql<string>`case
   else ${berlinDate(withdrawals.createdAt)}
 end`;
 
+/** Requested but not yet approved, under the approval rule (older requests were debited when they were made). */
+const undebitedPendingWithdrawal = and(eq(withdrawals.status, "pending"), isNull(withdrawals.debitedAt));
+
 export type AccountCapitalChange = CapitalChange & { accountId: string };
 
 /**
  * Every account's changes of earning capital up to `periodEnd`, summed per effective day.
- * Changes from before the period are folded into its first day.
+ * Changes from before the period are folded into its first day. Withdrawals still awaiting
+ * approval are debited only then, but they stop earning from the request day, so they count
+ * as changes too.
  */
 export async function loadCapitalChanges(
   executor: DbExecutor,
@@ -54,7 +59,7 @@ export async function loadCapitalChanges(
     .where(sql`${accrualStart} <= ${periodEnd}::date`)
     .as("entries");
 
-  return executor
+  const ledgerChanges = await executor
     .select({
       accountId: entries.accountId,
       effectiveOn: sql<string>`to_char(${entries.effectiveOn}, 'YYYY-MM-DD')`,
@@ -62,6 +67,43 @@ export async function loadCapitalChanges(
     })
     .from(entries)
     .groupBy(entries.accountId, entries.effectiveOn);
+
+  const requestDay = berlinDate(withdrawals.createdAt);
+  const pendingPayouts = await executor
+    .select({
+      accountId: withdrawals.accountId,
+      effectiveOn: sql<string>`to_char(greatest(${requestDay}, ${periodStart}::date), 'YYYY-MM-DD')`,
+      amountCents: sql<number>`-(${withdrawals.amountCents} + ${withdrawals.feeCents})`.mapWith(Number),
+    })
+    .from(withdrawals)
+    .where(and(undebitedPendingWithdrawal, sql`${requestDay} <= ${periodEnd}::date`));
+
+  return [...ledgerChanges, ...pendingPayouts];
+}
+
+/**
+ * Payout plus fee of withdrawals awaiting approval. The amount is still in the balance but reserved, so it can't be
+ * requested twice and a later approval can always be debited.
+ */
+export async function loadReservedPayoutCents(executor: DbExecutor, accountId: string): Promise<number> {
+  const reserved = await loadReservedPayouts(executor, [accountId]);
+  return reserved.get(accountId) ?? 0;
+}
+
+/** Reserved payout plus fee per account, for the given accounts. */
+export async function loadReservedPayouts(executor: DbExecutor, accountIds: string[]): Promise<Map<string, number>> {
+  if (accountIds.length === 0) {
+    return new Map();
+  }
+  const rows = await executor
+    .select({
+      accountId: withdrawals.accountId,
+      reservedCents: sql<number>`sum(${withdrawals.amountCents} + ${withdrawals.feeCents})`.mapWith(Number),
+    })
+    .from(withdrawals)
+    .where(and(undebitedPendingWithdrawal, inArray(withdrawals.accountId, accountIds)))
+    .groupBy(withdrawals.accountId);
+  return new Map(rows.map((row) => [row.accountId, row.reservedCents]));
 }
 
 /**
@@ -97,7 +139,10 @@ export type LockedCapital = {
   nextUnlockOn: IsoDate | null;
 };
 
-/** Capital of deposits younger than the minimum term; only the rest of the balance can be withdrawn. */
+/**
+ * Capital of credited deposits younger than the minimum term; only the rest of the balance can be withdrawn.
+ * Deposits awaiting reconciliation aren't in the balance yet, so they lock nothing.
+ */
 export async function loadLockedCapital(
   executor: DbExecutor,
   accountId: string,
@@ -110,6 +155,53 @@ export async function loadLockedCapital(
       nextUnlockOn: sql<string | null>`to_char(min(${unlocksOn}), 'YYYY-MM-DD')`,
     })
     .from(deposits)
-    .where(and(eq(deposits.accountId, accountId), ne(deposits.status, "rejected"), sql`${unlocksOn} > ${today}::date`));
+    .where(
+      and(
+        eq(deposits.accountId, accountId),
+        ne(deposits.status, "rejected"),
+        isNotNull(deposits.creditedAt),
+        sql`${unlocksOn} > ${today}::date`,
+      ),
+    );
   return locked;
+}
+
+/**
+ * Per account, the days on which the investor was deactivated up to `periodEnd` (see `PausedRange`). Built from the
+ * activity log, where every deactivation and activation is written in the same transaction as the status change.
+ */
+export async function loadPausedRanges(executor: DbExecutor, periodEnd: IsoDate): Promise<Map<string, PausedRange[]>> {
+  const changeDay = berlinDate(auditLogs.createdAt);
+  const rows = await executor
+    .select({
+      accountId: accounts.id,
+      action: auditLogs.action,
+      day: sql<string>`to_char(${changeDay}, 'YYYY-MM-DD')`,
+    })
+    .from(auditLogs)
+    .innerJoin(accounts, sql`${accounts.userId}::text = ${auditLogs.entityId}`)
+    .where(
+      and(
+        eq(auditLogs.entityType, "user"),
+        inArray(auditLogs.action, ["user.deactivated", "user.activated"]),
+        sql`${changeDay} <= ${periodEnd}::date`,
+      ),
+    )
+    .orderBy(asc(auditLogs.id));
+
+  const ranges = new Map<string, PausedRange[]>();
+  const openSince = new Map<string, string>();
+  for (const row of rows) {
+    const since = openSince.get(row.accountId);
+    if (row.action === "user.deactivated" && since === undefined) {
+      openSince.set(row.accountId, row.day);
+    } else if (row.action === "user.activated" && since !== undefined) {
+      ranges.set(row.accountId, [...(ranges.get(row.accountId) ?? []), { from: since, until: row.day }]);
+      openSince.delete(row.accountId);
+    }
+  }
+  for (const [accountId, since] of openSince) {
+    ranges.set(accountId, [...(ranges.get(accountId) ?? []), { from: since, until: null }]);
+  }
+  return ranges;
 }

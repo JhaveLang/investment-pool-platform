@@ -76,10 +76,17 @@ type ReviewListOptions<Status extends string> = {
   status: ReviewFilter<Status>;
   page: number;
   pageSize?: number;
+  /** Newest first unless asked otherwise (the payout-deadline card wants the oldest, most urgent requests). */
+  order?: "oldestFirst" | "newestFirst";
 };
+
+function reviewOrder<Status extends string>(options: ReviewListOptions<Status>): "oldestFirst" | "newestFirst" {
+  return options.order ?? "newestFirst";
+}
 
 export type DepositReviewRow = {
   id: string;
+  accountId: string;
   createdAt: Date;
   amountCents: number;
   method: PaymentMethod;
@@ -100,13 +107,13 @@ export async function listDepositsForReview(
   const db = getDb();
   const pageSize = options.pageSize ?? DEFAULT_PAGE_SIZE;
   const filter = options.status === "all" ? undefined : eq(deposits.status, options.status);
-  // Open items are worked through oldest first; history is shown newest first.
-  const order = options.status === "pending" ? asc(deposits.createdAt) : desc(deposits.createdAt);
+  const order = reviewOrder(options) === "oldestFirst" ? asc(deposits.createdAt) : desc(deposits.createdAt);
 
   const [rows, totalCount] = await Promise.all([
     db
       .select({
         id: deposits.id,
+        accountId: deposits.accountId,
         createdAt: deposits.createdAt,
         amountCents: deposits.amountCents,
         method: deposits.method,
@@ -135,6 +142,7 @@ export async function listDepositsForReview(
 
 export type WithdrawalReviewRow = {
   id: string;
+  accountId: string;
   createdAt: Date;
   amountCents: number;
   method: PaymentMethod;
@@ -156,12 +164,13 @@ export async function listWithdrawalsForReview(
   const db = getDb();
   const pageSize = options.pageSize ?? DEFAULT_PAGE_SIZE;
   const filter = options.status === "all" ? undefined : eq(withdrawals.status, options.status);
-  const order = options.status === "pending" ? asc(withdrawals.createdAt) : desc(withdrawals.createdAt);
+  const order = reviewOrder(options) === "oldestFirst" ? asc(withdrawals.createdAt) : desc(withdrawals.createdAt);
 
   const [rows, totalCount] = await Promise.all([
     db
       .select({
         id: withdrawals.id,
+        accountId: withdrawals.accountId,
         createdAt: withdrawals.createdAt,
         amountCents: withdrawals.amountCents,
         method: withdrawals.method,
@@ -191,6 +200,7 @@ export async function listWithdrawalsForReview(
 
 export type InvestorRow = {
   id: string;
+  accountId: string;
   investorCode: string;
   fullName: string;
   email: string;
@@ -203,6 +213,7 @@ export type InvestorRow = {
 
 const investorRowColumns = {
   id: users.id,
+  accountId: accounts.id,
   investorCode: sql<string>`${users.investorCode}`,
   fullName: users.fullName,
   email: users.email,
@@ -217,27 +228,34 @@ const investorStatusFilters: Record<InvestorStatus, SQL> = {
   deactivated: isNotNull(users.deactivatedAt),
 };
 
-export async function listInvestors(options: {
-  status: InvestorStatus | "all";
-  search?: string;
-  page: number;
-  pageSize?: number;
-}): Promise<PaginatedResult<InvestorRow>> {
-  const db = getDb();
-  const pageSize = options.pageSize ?? DEFAULT_PAGE_SIZE;
-  const searchTerm = options.search?.trim();
+/** Status filter of the investor list, in tab order; the first ("all") is the default. */
+export const INVESTOR_LIST_FILTERS: readonly (InvestorStatus | "all")[] = ["all", "active", "deactivated"];
+
+type InvestorListFilter = { status: InvestorStatus | "all"; search?: string };
+
+/** Investors with the chosen status whose name, email or investor ID contains the search text. */
+function investorListFilter({ status, search }: InvestorListFilter): SQL | undefined {
+  const searchTerm = search?.trim();
   const searchPattern = searchTerm ? toContainsPattern(searchTerm) : undefined;
-  const filter: SQL | undefined = and(
+  return and(
     eq(users.role, "investor"),
-    options.status === "all" ? undefined : investorStatusFilters[options.status],
+    status === "all" ? undefined : investorStatusFilters[status],
     searchPattern
       ? or(
           ilike(users.fullName, searchPattern),
           ilike(users.email, searchPattern),
-          ilike(users.investorCode, toContainsPattern(normalizeInvestorCodeQuery(options.search ?? ""))),
+          ilike(users.investorCode, toContainsPattern(normalizeInvestorCodeQuery(search ?? ""))),
         )
       : undefined,
   );
+}
+
+export async function listInvestors(
+  options: InvestorListFilter & { page: number; pageSize?: number },
+): Promise<PaginatedResult<InvestorRow>> {
+  const db = getDb();
+  const pageSize = options.pageSize ?? DEFAULT_PAGE_SIZE;
+  const filter = investorListFilter(options);
 
   const [rows, [{ totalCount }]] = await Promise.all([
     db
@@ -245,7 +263,8 @@ export async function listInvestors(options: {
       .from(users)
       .innerJoin(accounts, eq(accounts.userId, users.id))
       .where(filter)
-      .orderBy(asc(users.fullName))
+      // Newest registrations first, like every other list.
+      .orderBy(desc(users.createdAt), asc(users.fullName))
       .limit(pageSize)
       .offset((options.page - 1) * pageSize),
     db
@@ -256,6 +275,16 @@ export async function listInvestors(options: {
   ]);
 
   return toPaginatedResult(rows, totalCount, options.page, pageSize);
+}
+
+/** Every investor matching the list's filter (all pages), by name like the other CSV exports. */
+export async function listInvestorsForExport(filter: InvestorListFilter): Promise<InvestorRow[]> {
+  return getDb()
+    .select(investorRowColumns)
+    .from(users)
+    .innerJoin(accounts, eq(accounts.userId, users.id))
+    .where(investorListFilter(filter))
+    .orderBy(asc(users.fullName), asc(users.investorCode));
 }
 
 export type InvestorDetail = InvestorRow & {
@@ -299,9 +328,12 @@ export type AuditLogRow = {
 export async function listAuditLogs(options: {
   page: number;
   pageSize?: number;
+  /** Only what this user did themselves (an investor's own activity log). */
+  actorUserId?: string;
 }): Promise<PaginatedResult<AuditLogRow>> {
   const db = getDb();
   const pageSize = options.pageSize ?? DEFAULT_PAGE_SIZE;
+  const where = options.actorUserId ? eq(auditLogs.actorUserId, options.actorUserId) : undefined;
 
   const [rows, totalCount] = await Promise.all([
     db
@@ -319,11 +351,27 @@ export async function listAuditLogs(options: {
       })
       .from(auditLogs)
       .leftJoin(users, eq(auditLogs.actorUserId, users.id))
+      .where(where)
       .orderBy(desc(auditLogs.createdAt), desc(auditLogs.id))
       .limit(pageSize)
       .offset((options.page - 1) * pageSize),
-    db.$count(auditLogs),
+    db.$count(auditLogs, where),
   ]);
 
   return toPaginatedResult(rows, totalCount, options.page, pageSize);
+}
+
+/**
+ * Everything the activity log holds about one investor, newest first: what they did, what was done to their account
+ * (edits, status changes), decisions on their deposits and withdrawals, and booked months they received a return in.
+ */
+
+/** How many deposits and withdrawal requests an account has in total (for "newest 50 of N"). */
+export async function countAccountRequests(accountId: string): Promise<{ deposits: number; withdrawals: number }> {
+  const db = getDb();
+  const [depositCount, withdrawalCount] = await Promise.all([
+    db.$count(deposits, eq(deposits.accountId, accountId)),
+    db.$count(withdrawals, eq(withdrawals.accountId, accountId)),
+  ]);
+  return { deposits: depositCount, withdrawals: withdrawalCount };
 }

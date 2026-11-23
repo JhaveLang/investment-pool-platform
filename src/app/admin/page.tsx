@@ -25,7 +25,11 @@ import { listLedgerEntries } from "@/server/queries/ledger";
 import { getReturnSchedule } from "@/server/queries/returns";
 
 const LATEST_ENTRY_COUNT = 6;
-const QUEUE_SIZE = 4;
+/** Cards in the approval queue, one per investor, the newest request first; the deadlines card keeps the oldest. */
+const QUEUE_SIZE = 8;
+/** Open requests loaded per kind for the queue, so each investor's card counts all of their requests. */
+const QUEUE_REQUESTS = 200;
+const DEADLINE_COUNT = 4;
 const MOVEMENT_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 export const generateMetadata = pageMetadata((messages) => messages.admin.overviewTitle);
@@ -63,18 +67,29 @@ export default async function AdminOverviewPage() {
   const { messages, format } = await getI18n();
   const text = messages.admin;
   const renderedAt = new Date();
-  const [overview, latestEntries, returnSchedule, history, latestRate, withdrawals, deposits, movement, integrity] =
-    await Promise.all([
-      getPoolOverview(),
-      listLedgerEntries({ page: 1, pageSize: LATEST_ENTRY_COUNT }),
-      getReturnSchedule(),
-      loadBalanceHistory(),
-      getLatestReturnRate(),
-      listWithdrawalsForReview({ status: "pending", page: 1, pageSize: QUEUE_SIZE }),
-      listDepositsForReview({ status: "pending", page: 1, pageSize: QUEUE_SIZE }),
-      getNetMovementSince(new Date(renderedAt.getTime() - MOVEMENT_WINDOW_MS)),
-      getLedgerIntegrity(),
-    ]);
+  const [
+    overview,
+    latestEntries,
+    returnSchedule,
+    history,
+    latestRate,
+    newestWithdrawals,
+    newestDeposits,
+    oldestWithdrawals,
+    movement,
+    integrity,
+  ] = await Promise.all([
+    getPoolOverview(),
+    listLedgerEntries({ page: 1, pageSize: LATEST_ENTRY_COUNT }),
+    getReturnSchedule(),
+    loadBalanceHistory(),
+    getLatestReturnRate(),
+    listWithdrawalsForReview({ status: "pending", page: 1, pageSize: QUEUE_REQUESTS }),
+    listDepositsForReview({ status: "pending", page: 1, pageSize: QUEUE_REQUESTS }),
+    listWithdrawalsForReview({ status: "pending", page: 1, pageSize: DEADLINE_COUNT, order: "oldestFirst" }),
+    getNetMovementSince(new Date(renderedAt.getTime() - MOVEMENT_WINDOW_MS)),
+    getLedgerIntegrity(),
+  ]);
   // The next month in order, or before the very first booking the latest ended month.
   const unbookedMonth = returnSchedule.bookableMonths[0];
   const openCount = overview.pendingWithdrawals.count + overview.pendingDeposits.count;
@@ -154,7 +169,7 @@ export default async function AdminOverviewPage() {
                 </span>
               ) : null}
             </div>
-            <ApprovalQueue withdrawals={withdrawals.rows} deposits={deposits.rows} />
+            <ApprovalQueue withdrawals={newestWithdrawals.rows} deposits={newestDeposits.rows} limit={QUEUE_SIZE} />
           </section>
 
           <Card className="min-w-0">
@@ -167,7 +182,7 @@ export default async function AdminOverviewPage() {
           </Card>
         </div>
 
-        <aside className="grid min-w-0 content-start gap-4 lg:grid-cols-2 lg:gap-6 wide:col-span-4 wide:grid-cols-1">
+        <aside className="grid min-w-0 grid-cols-1 content-start gap-4 lg:grid-cols-2 lg:gap-6 wide:col-span-4 wide:grid-cols-1">
           <Card>
             <CardHeader title={text.utilitiesTitle} icon="file" />
             <div className="flex flex-col gap-2 px-3 pb-3">
@@ -234,7 +249,7 @@ export default async function AdminOverviewPage() {
             </dl>
           </Card>
 
-          <PayoutDeadlines withdrawals={withdrawals.rows} />
+          <PayoutDeadlines withdrawals={oldestWithdrawals.rows} />
         </aside>
       </div>
     </div>

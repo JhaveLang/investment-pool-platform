@@ -2,13 +2,15 @@ import "server-only";
 import { asc, eq, inArray, sql } from "drizzle-orm";
 import { daysInMonth, firstDayOfMonth, lastDayOfMonth, type IsoMonth } from "@/lib/calendar";
 import { DomainError } from "@/lib/errors";
-import { calculatePeriodReturn, sumCapitalDays, type CapitalChange } from "@/lib/returns";
+import { calculatePeriodReturn, pausedDaysBetween, sumCapitalDays, type CapitalChange } from "@/lib/returns";
 import { getDb, type DbExecutor } from "@/server/db/client";
 import { accounts, returnPeriods, users, type ReturnPeriod } from "@/server/db/schema";
 import {
   countPendingDepositsEarningBy,
   countPendingWithdrawalsRequestedBy,
   loadCapitalChanges,
+  loadPausedRanges,
+  loadReservedPayouts,
 } from "@/server/queries/accrual";
 import { getReturnSchedule } from "@/server/queries/returns";
 import { recordAudit } from "./audit";
@@ -21,10 +23,15 @@ export type MonthlyReturnRow = {
   investorCode: string | null;
   /** Day-weighted average capital that earned returns in the month. */
   averageCapitalCents: number;
-  /** Amount to book; a loss larger than the current balance is capped at the balance. */
+  /**
+   * Amount to book; a loss is capped at the balance minus payouts reserved for pending withdrawals, so approving
+   * them later can never overdraw the account.
+   */
   returnCents: number;
-  /** True when a loss had to be capped because the investor has since withdrawn. */
+  /** True when a loss had to be capped because the investor has since withdrawn (or requested a withdrawal). */
   capped: boolean;
+  /** Days of the month the investor was deactivated; they earn and lose nothing on those days. */
+  pausedDays: number;
 };
 
 export type MonthlyReturnCalculation = {
@@ -56,7 +63,10 @@ async function assertBookable(executor: DbExecutor, month: IsoMonth): Promise<vo
   }
 }
 
-/** Applies the monthly rate to every account's day-weighted capital (see `src/lib/returns.ts`). */
+/**
+ * Applies the monthly rate to every account's day-weighted capital (see `src/lib/returns.ts`). Days on which an
+ * investor was deactivated count for neither return nor loss.
+ */
 async function calculateMonthlyReturn(
   executor: DbExecutor,
   month: IsoMonth,
@@ -88,15 +98,23 @@ async function calculateMonthlyReturn(
     .innerJoin(users, eq(accounts.userId, users.id))
     .where(inArray(accounts.id, [...changesByAccount.keys()]))
     .orderBy(asc(users.fullName), asc(accounts.id));
+  const reservedByAccount = await loadReservedPayouts(
+    executor,
+    accountRows.map((account) => account.accountId),
+  );
+
+  const pausedByAccount = await loadPausedRanges(executor, periodEnd);
 
   const rows: MonthlyReturnRow[] = [];
   for (const account of accountRows) {
-    const capitalDays = sumCapitalDays(changesByAccount.get(account.accountId) ?? [], periodStart, periodEnd);
+    const paused = pausedByAccount.get(account.accountId) ?? [];
+    const capitalDays = sumCapitalDays(changesByAccount.get(account.accountId) ?? [], periodStart, periodEnd, paused);
     const { averageCapitalCents, returnCents } = calculatePeriodReturn(capitalDays, ratePpm, daysInMonth(month));
     if (averageCapitalCents === 0) {
       continue;
     }
-    const cappedReturnCents = Math.max(returnCents, -account.balanceCents);
+    const unreservedCents = Math.max(0, account.balanceCents - (reservedByAccount.get(account.accountId) ?? 0));
+    const cappedReturnCents = Math.max(returnCents, -unreservedCents);
     rows.push({
       accountId: account.accountId,
       investorName: account.investorName,
@@ -105,6 +123,7 @@ async function calculateMonthlyReturn(
       averageCapitalCents,
       returnCents: cappedReturnCents,
       capped: cappedReturnCents !== returnCents,
+      pausedDays: pausedDaysBetween(periodStart, periodEnd, paused),
     });
   }
 

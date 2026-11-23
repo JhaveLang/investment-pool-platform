@@ -9,13 +9,14 @@ import type { RecentDeposit, RecentWithdrawal } from "@/server/queries/investor"
 
 const cardStyles = "flex items-start justify-between gap-3 rounded-xl bg-raised p-3";
 
-export async function DepositHistory({ deposits }: { deposits: RecentDeposit[] }) {
+/** `emptyText` replaces the investor's own wording when the admin looks at the history. */
+export async function DepositHistory({ deposits, emptyText }: { deposits: RecentDeposit[]; emptyText?: string }) {
   const { messages, format } = await getI18n();
   const columns = messages.columns;
   const text = messages.deposits;
 
   if (deposits.length === 0) {
-    return <EmptyState title={text.empty} />;
+    return <EmptyState title={emptyText ?? text.empty} />;
   }
   return (
     <>
@@ -90,13 +91,19 @@ export async function DepositHistory({ deposits }: { deposits: RecentDeposit[] }
   );
 }
 
-export async function WithdrawalHistory({ withdrawals }: { withdrawals: RecentWithdrawal[] }) {
+export async function WithdrawalHistory({
+  withdrawals,
+  emptyText,
+}: {
+  withdrawals: RecentWithdrawal[];
+  emptyText?: string;
+}) {
   const { messages, format } = await getI18n();
   const columns = messages.columns;
   const text = messages.withdrawals;
 
   if (withdrawals.length === 0) {
-    return <EmptyState title={text.empty} />;
+    return <EmptyState title={emptyText ?? text.empty} />;
   }
   return (
     <>

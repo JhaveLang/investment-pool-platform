@@ -6,6 +6,7 @@ const toneStyles = {
   success: "border-gain/30 bg-gain/8 text-fg [--alert-dot:var(--color-gain)]",
   error: "border-loss/35 bg-loss/8 text-fg [--alert-dot:var(--color-loss)]",
   info: "border-accent-400/30 bg-accent-400/8 text-fg [--alert-dot:var(--color-accent-400)]",
+  warning: "border-warn/35 bg-warn/8 text-fg [--alert-dot:var(--color-warn)]",
 } as const;
 
 type AlertProps = {

@@ -3,11 +3,13 @@
 import { redirect } from "next/navigation";
 import { getI18n } from "@/i18n/server";
 import { errorState, readFormText, validationErrorState, type ActionState } from "@/lib/action-state";
+import { WELCOME_PATH } from "@/lib/onboarding";
 import { getSchemas } from "@/lib/validation";
 import { rateLimitedState, toErrorState } from "@/server/action-errors";
 import { homePathForRole } from "@/server/auth/guards";
 import { createSession, deleteCurrentSession, getCurrentUser, type SessionUser } from "@/server/auth/session";
 import { getDb } from "@/server/db/client";
+import { hasDeposit } from "@/server/queries/investor";
 import { consumeRateLimits, rateLimitRules } from "@/server/rate-limit";
 import { getClientIp } from "@/server/request";
 import { recordAudit } from "@/server/services/audit";
@@ -47,6 +49,10 @@ export async function loginAction(_previousState: ActionState, formData: FormDat
   if (!user) {
     return errorState(messages.auth.invalidCredentials, { values });
   }
+  // Until their first deposit, investors land on the welcome popup with the way to it.
+  if (user.role === "investor" && !(await hasDeposit(user.id))) {
+    redirect(WELCOME_PATH);
+  }
   redirect(homePathForRole(user.role));
 }
 
@@ -78,7 +84,8 @@ export async function registerAction(_previousState: ActionState, formData: Form
     return failure.status === "error" ? { ...failure, values } : failure;
   }
 
-  redirect("/dashboard");
+  // A new account: zero balance, and the welcome popup leads straight to the first deposit.
+  redirect(WELCOME_PATH);
 }
 
 export async function logoutAction(): Promise<void> {

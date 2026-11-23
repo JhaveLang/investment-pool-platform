@@ -7,6 +7,50 @@ export const en: Messages = {
     description: "Your investment pool: deposits, withdrawals and balance in real time.",
   },
 
+  // The public website: start page, news, contact and legal pages.
+  site: {
+    navLabel: "Website",
+    footerNav: "Website and legal",
+    menu: "Menu",
+    home: "Home",
+    news: "News",
+    contact: "Contact",
+    signIn: "Sign in",
+    myAccount: "My account",
+    imprint: "Legal notice",
+    privacy: "Privacy",
+    tagline: "The pool of the Bitcoin Magazin",
+    since: (month: string) => `Since ${month}`,
+    heroText: "Investors sign in to their online account here, read the latest notices and reach the team.",
+    allNews: "All notices",
+    forInvestors: "For investors",
+    accountTitle: "Your online account",
+    accountText: "Balance, deposits, withdrawals and every booking – always in view once you sign in.",
+    accountFeatures: [
+      "Your balance as soon as a booking is made",
+      "Request and track deposits and withdrawals",
+      "Every booking with the balance after it",
+    ],
+    closedSince: (date: string) => `The pool has been closed to new investors since ${date}.`,
+    howItWorks: "How your account works",
+    latestNews: "Latest notices",
+    contactTitle: "Questions?",
+    contactText: "Write to us. For detailed questions we will gladly call you back at our expense.",
+    newsTitle: "News",
+    newsSubtitle: "Notices about running the pool, newest first.",
+    newsEmpty: "There are no notices at the moment.",
+    contactPageTitle: "Contact",
+    contactPageSubtitle: "We reply by email; for detailed questions we will gladly call you back at our expense.",
+    generalTitle: "General enquiries",
+    generalText: "For all questions about the pool and your account.",
+    billingTitle: "Billing team",
+    billingText: "Sends the account statements. Please do not reply to this address.",
+    investorHint: "Already an investor? Your balance, requests and bookings are right in your account.",
+    templateNotice:
+      "Template: the operator fills in the details in square brackets. Please have the text reviewed by a lawyer before publishing.",
+    copyright: (from: number, to: number) => `© ${from}–${to} Bitcoin Magazin Pool`,
+  },
+
   nav: {
     mainNavigation: "Main navigation",
     dashboard: "Overview",
@@ -101,6 +145,21 @@ export const en: Messages = {
   dashboard: {
     title: "Overview",
     greeting: (name: string) => `Welcome, ${name}`,
+    // Popup after signing up, and after signing in until the first deposit.
+    welcome: {
+      title: (name: string) => `Welcome, ${name}!`,
+      description: "Your account is set up and ready for your first deposit.",
+      stepsTitle: "How your first deposit works",
+      steps: [
+        "Create a deposit: choose the amount and the payment method – bank transfer, crypto or exchange.",
+        "Transfer the amount with the reference shown.",
+        "As soon as our team has matched the incoming payment, the amount after fees is credited to your account.",
+      ],
+      terms: (termDays: number, payoutDays: number) =>
+        `Deposited capital is locked for ${termDays} days; withdrawals are processed within ${payoutDays} days.`,
+      firstDeposit: "Make your first deposit",
+      later: "Later",
+    },
     sumReturns: "Booked returns",
     balance: "Balance",
     availabilityTitle: "Availability",
@@ -140,7 +199,10 @@ export const en: Messages = {
     ledgerTitle: "Bookings & running balance",
     ledgerSubtitle: "Every account movement with timestamp and resulting balance.",
     moveMoneyTitle: "Move money",
-    creditedInstantly: "Credited instantly",
+    creditedInstantly: "Credited once reconciled",
+    reserved: "Reserved for withdrawals",
+    pendingDeposits: (amount: string) => `+${amount} awaiting reconciliation`,
+    reservedPayouts: (amount: string) => `${amount} reserved for withdrawals`,
     paymentRoutes: "Payment routes",
     openRequestsTitle: "Open requests",
     openCount: (count: number) => `${count} open`,
@@ -201,9 +263,10 @@ export const en: Messages = {
     creditShare: (share: string) => `${share} credited`,
     submit: "Book deposit",
     pending: "Booking …",
-    info: "The amount minus the fee is credited to your account immediately and matched against the payment receipt by our team. Returns start on the 7th day after the payment is received (received on the 1st → from the 8th). Deposited capital is locked for 60 days; returns can be withdrawn at any time.",
-    success: (reference: string) => `Deposit booked successfully. Reference: ${reference}`,
-    credited: (amount: string) => `Credited ${amount}`,
+    info: "The amount minus the fee is credited to your account as soon as our team has matched it against the payment receipt. Returns start on the 7th day after the payment is received (received on the 1st → from the 8th). Deposited capital is locked for 60 days; returns can be withdrawn at any time.",
+    success: (reference: string) =>
+      `Deposit recorded. It will be credited once the payment has been reconciled. Reference: ${reference}`,
+    credited: (amount: string) => `${amount} after fee`,
     receivedOn: (date: string) => `Received on ${date}`,
     historyTitle: "Your deposits",
     empty: "You have not made any deposits yet.",
@@ -216,9 +279,9 @@ export const en: Messages = {
     accrualValue: (day: number) => `from day ${day} after receipt`,
     termLabel: "Minimum term",
     termValue: (days: number) => `${days} days from receipt`,
-    newBalance: "New balance",
+    newBalance: "Balance after reconciliation",
     submitAmount: (amount: string) => `Book deposit (${amount})`,
-    ledgerNote: "Recorded permanently in the ledger",
+    ledgerNote: "Recorded permanently in the ledger once reconciled",
   },
 
   withdrawals: {
@@ -240,9 +303,10 @@ export const en: Messages = {
     maxPayout: (amount: string) => `Maximum payout with this method: ${amount}`,
     locked: (amount: string, date: string) =>
       `${amount} is still within the 60-day minimum term (free from ${date}). Returns can be withdrawn at any time.`,
-    info: "You receive the full amount; the fee is debited on top. From the day of the request the amount no longer earns returns, and the payout is made within 7 days. If the request is rejected, it is refunded automatically.",
-    success: (reference: string) => `Withdrawal requested. Reference: ${reference}`,
-    debited: (amount: string) => `Debited ${amount}`,
+    info: "You receive the full amount; the fee is debited on top. The amount is reserved at once and debited from your balance when the payout is approved. From the day of the request it no longer earns returns, and the payout is made within 7 days. If the request is rejected, the reservation is released.",
+    success: (reference: string) =>
+      `Withdrawal requested. The amount is reserved until it is approved. Reference: ${reference}`,
+    debited: (amount: string) => `${amount} incl. fee`,
     historyTitle: "Your withdrawal requests",
     empty: "You have not requested any withdrawals yet.",
     switchLabel: "Withdraw",
@@ -250,9 +314,9 @@ export const en: Messages = {
     debitLabel: "Total debited",
     payoutLabel: "Payout",
     payoutValue: (days: number) => `within ${days} days`,
-    newBalance: "New balance",
+    newBalance: "Balance after approval",
     submitAmount: (amount: string) => `Request withdrawal (${amount})`,
-    ledgerNote: "Recorded permanently in the ledger",
+    ledgerNote: "Recorded permanently in the ledger once approved",
   },
 
   depositStatus: {
@@ -314,18 +378,27 @@ export const en: Messages = {
     overdue: "Overdue",
 
     depositsTitle: "Reconcile deposits",
-    depositsSubtitle: "Match booked deposits against bank receipts. Cancelled deposits are reversed automatically.",
+    depositsSubtitle:
+      "Match deposits against bank receipts. Only reconciling credits the investor's balance; cancelled deposits are never credited.",
     depositsEmpty: "No deposits in this view.",
 
     withdrawalsTitle: "Review withdrawals",
     withdrawalsSubtitle:
-      "Approve withdrawals once the transfer has been sent. Rejected requests are refunded to the investor automatically.",
+      "Approve withdrawals once the transfer has been sent; only approving debits the balance. Rejecting frees the reserved amount.",
     withdrawalsEmpty: "No withdrawals in this view.",
 
     investorsTitle: "Investors",
     investorsSubtitle:
-      "All investors and their balances. Open an investor to edit their details or deactivate the account.",
+      "All investors with their balance and the chosen month's figures. View shows everything about an investor.",
     newInvestor: "New investor",
+    investorActions: {
+      view: "View",
+      viewInvestor: (name: string) => `View ${name}`,
+      edit: "Edit",
+      editInvestor: (name: string) => `Edit ${name}`,
+      deactivateInvestor: (name: string) => `Deactivate ${name}`,
+      activateInvestor: (name: string) => `Activate ${name}`,
+    },
     investorsEmpty: "No investors found.",
     searchLabel: "Search investors",
     searchPlaceholder: "Name, email or investor ID",
@@ -349,6 +422,7 @@ export const en: Messages = {
       `${count === 1 ? "1 withdrawal" : `${count} withdrawals`} requested by month end ${count === 1 ? "is" : "are"} still undecided and counted as paid out. If one is rejected after booking, this month stays unchanged, so decide open withdrawals first where possible.`,
     returnsTotal: "Total",
     returnsCapped: "Loss capped at the balance",
+    returnsPausedDays: (days: number) => `Deactivated: ${days === 1 ? "1 day" : `${days} days`} without return or loss`,
     returnsBookButton: (month: string) => `Book return for ${month}`,
     returnsBookPending: "Booking …",
     returnsBookHint:
@@ -364,6 +438,7 @@ export const en: Messages = {
       "Withdrawals earn until the day before the request (requested on the 20th → 19 days that month).",
       "Booked returns earn along from the following month.",
       "Cancelled deposits and rejected withdrawals count as if they never happened, provided they were decided before the month was booked.",
+      "Deactivated investors earn no return and take no loss: from the day of deactivation up to the day before they are activated again.",
     ],
 
     reportsTitle: "Reports",
@@ -393,6 +468,9 @@ export const en: Messages = {
         description: "Current balance of every investor (as of today).",
         fileName: "balances",
       },
+      // Exported from the investors pages, listed here for the activity log.
+      investorStatements: { title: "Monthly statement of all investors", fileName: "investor-monthly-statement" },
+      investorStatement: { title: "Monthly statement of one investor", fileName: "monthly-statement" },
     },
 
     activityTitle: "Activity log",
@@ -413,10 +491,10 @@ export const en: Messages = {
       noteLabel: "Note",
       receivedOnLabel: "Payment received on",
       processing: "Processing …",
-      depositReconciled: "Deposit marked as reconciled.",
-      depositRejected: "Deposit cancelled and reversed.",
-      withdrawalApproved: "Withdrawal approved.",
-      withdrawalRejected: "Withdrawal rejected, the amount has been refunded.",
+      depositReconciled: "Deposit reconciled and credited.",
+      depositRejected: "Deposit cancelled.",
+      withdrawalApproved: "Withdrawal approved and debited.",
+      withdrawalRejected: "Withdrawal rejected; the reserved amount is free again.",
     },
     netMovement: "Movement 24 h",
     entriesInWindow: (count: number) => (count === 1 ? "1 booking" : `${count} bookings`),
@@ -438,9 +516,68 @@ export const en: Messages = {
     mismatchCount: (count: number) => `${count} off`,
     zeroBalanceAccounts: "Accounts with zero balance",
     integrityNote: "On every load, each balance is compared with the sum of its ledger entries.",
+    investorMonth: {
+      label: "Month",
+      hint: "Amounts after fees · open requests are marked",
+      investmentOn: (month: string) => `Investment on 1 ${month}`,
+      returnFor: (month: string) => `Return ${month}`,
+      miscFor: (month: string) => `Miscellaneous ${month}`,
+      pending: "open",
+      miscTitle: (month: string) => `Miscellaneous ${month}`,
+      miscDescription: (name: string) =>
+        `${name} · Deposits and withdrawals after fees, newest first. Open requests count once they are decided.`,
+      showMisc: (name: string, month: string) => `Show all deposits and withdrawals of ${name} in ${month}`,
+      more: (count: number) => `+${count}`,
+      bookedTotal: "Total booked",
+      pendingTotal: "Open, not counted yet",
+    },
+    queueGroup: {
+      title: (name: string) => `Open requests of ${name}`,
+      description: (count: number) => `${count} requests, newest first. Each request is decided on its own.`,
+      showAll: (name: string, count: number) => `Show all ${count} open requests of ${name}`,
+      showAllShort: (count: number) => `Show all ${count}`,
+      latest: (dateTime: string) => `Newest request: ${dateTime}`,
+      deposits: (count: number) => (count === 1 ? "1 deposit" : `${count} deposits`),
+      withdrawals: (count: number) => (count === 1 ? "1 withdrawal" : `${count} withdrawals`),
+    },
+    investorExport: {
+      button: "CSV",
+      titleAll: "Monthly statement as CSV",
+      descriptionAll:
+        "One row per investor in the current filter; per month the investment on the 1st, the return and miscellaneous. Amounts after fees.",
+      titleOne: (name: string) => `Monthly statement of ${name} as CSV`,
+      descriptionOne: "One row per month: investment on the 1st, return, deposits and withdrawals. Amounts after fees.",
+      from: "From",
+      to: "To",
+      download: "Download CSV",
+      rowLabel: (name: string) => `Download the monthly statement of ${name} as CSV`,
+      rowTitle: "Download CSV (all months)",
+    },
+    investorView: {
+      statementTitle: "Monthly statement",
+      statementSubtitle:
+        "Investment at the start of the month, the month's return, and deposits and withdrawals. Amounts after fees; a return counts from the 1st of the following month.",
+      investment: "Investment on the 1st",
+      return: "Return",
+      misc: "Miscellaneous",
+      statementEmpty: "No deposits or withdrawals yet.",
+      totalReturns: "Total returns",
+      depositsTitle: "Deposits",
+      withdrawalsTitle: "Withdrawals",
+      ledgerTitle: "Bookings",
+      activityTitle: "Activity log",
+      activitySubtitle:
+        "What the investor did themselves: registration, sign-ins and sign-outs, deposit and withdrawal requests, password changes.",
+      newestOf: (shown: number, total: number) => `Newest ${shown} of ${total}`,
+      depositsEmpty: "No deposits.",
+      withdrawalsEmpty: "No withdrawals.",
+      activityEmpty: "No entries.",
+    },
     investorDetail: {
       factsTitle: "Overview",
       backLink: "All investors",
+      backToInvestor: "Back to investor",
+      editTitle: (name: string) => `Edit ${name}`,
       profileTitle: "Name & email",
       passwordTitle: "Set new password",
       passwordDescription: "Enter a new password. The current password is not needed.",
@@ -457,15 +594,19 @@ export const en: Messages = {
       deactivatedOn: (date: string) => `Deactivated on ${date}`,
       deactivateTitle: "Deactivate account",
       deactivateDescription:
-        "The investor is signed out everywhere and can no longer sign in. Nothing is deleted: bookings, balance and the activity log stay, and the account can be activated again at any time.",
+        "The investor is signed out everywhere and can no longer sign in. From the day of deactivation the balance earns no return and takes no loss. Nothing is deleted: bookings, balance and the activity log stay, and the account can be activated again at any time.",
       balanceRemains: (amount: string) =>
-        `The account still holds ${amount}. The balance keeps receiving the monthly result but can only be withdrawn once the account is activated again.`,
+        `The account still holds ${amount}. It can only be withdrawn once the account is activated again.`,
       openRequestsRemain: (count: number) =>
         count === 1 ? "1 open request can still be decided." : `${count} open requests can still be decided.`,
       deactivate: "Deactivate",
+      confirmDeactivateTitle: "Deactivate investor?",
+      confirmDeactivateBody: (name: string) =>
+        `${name} will be signed out everywhere and can't sign in again until the account is activated. From today the balance earns no return and takes no loss. Balance, bookings and open requests stay as they are.`,
+      cancel: "Cancel",
       activateTitle: "Activate account",
       activateDescription: (date: string) =>
-        `Deactivated since ${date}. Once activated, the investor can sign in again with their existing password.`,
+        `Deactivated since ${date}. Once activated, the investor can sign in again with their existing password, and the balance earns returns again from that day.`,
       activate: "Activate",
       deactivated: "Investor deactivated and signed out everywhere.",
       activated: "Investor activated. They can sign in again with their existing password.",
@@ -480,6 +621,46 @@ export const en: Messages = {
       submit: "Create investor",
       submitPending: "Creating …",
     },
+  },
+
+  notifications: {
+    title: "Notifications",
+    open: (count: number) => (count === 0 ? "Notifications" : `Notifications, ${count} new`),
+    empty: "No events yet. New withdrawal requests, deposits and registrations appear here at once.",
+    live: "Live",
+    connecting: "Connecting …",
+    offline: "Disconnected – reload the page",
+    view: "View",
+    dismiss: "Dismiss",
+    someone: "An investor",
+    types: {
+      "withdrawal.requested": "Withdrawal request",
+      "deposit.created": "New deposit",
+      "auth.registered": "New investor",
+    },
+    withdrawalRequested: (name: string, amount: string) => `${name} requested a withdrawal of ${amount}.`,
+    depositCreated: (name: string, amount: string) => `${name} reported a deposit of ${amount}.`,
+    investorRegistered: (name: string) => `${name} registered.`,
+  },
+
+  liveUpdates: {
+    view: "View",
+    dismiss: "Dismiss",
+    types: {
+      "deposit.reconciled": "Deposit credited",
+      "deposit.rejected": "Deposit cancelled",
+      "withdrawal.approved": "Withdrawal approved",
+      "withdrawal.rejected": "Withdrawal rejected",
+      "returns.booked": "Monthly return booked",
+    },
+    depositReconciled: (amount: string, reference: string) =>
+      `Your deposit ${reference} has been reconciled: ${amount} credited.`,
+    depositRejected: (reference: string) => `Your deposit ${reference} was cancelled.`,
+    withdrawalApproved: (amount: string, reference: string) =>
+      `Your withdrawal ${reference} of ${amount} was approved and is being transferred.`,
+    withdrawalRejected: (reference: string) =>
+      `Your withdrawal ${reference} was rejected; the reserved amount is available again.`,
+    returnsBooked: (month: string, amount: string) => `Your return for ${month}: ${amount}.`,
   },
 
   profile: {
@@ -553,6 +734,16 @@ export const en: Messages = {
     reviewedAt: "Reviewed on",
     note: "Note",
     registeredAt: "Registered on",
+    month: "Month",
+    investmentOn: (month: string) => `Investment on 1 ${month} (EUR)`,
+    returnFor: (month: string) => `Return ${month} (EUR)`,
+    miscFor: (month: string) => `Miscellaneous ${month}`,
+    investment: "Investment on the 1st (EUR)",
+    monthReturn: "Return (EUR)",
+    deposits: "Deposits (EUR)",
+    withdrawals: "Withdrawals (EUR)",
+    misc: "Miscellaneous",
+    pending: "open",
   },
 
   amountField: {
@@ -568,6 +759,7 @@ export const en: Messages = {
     emptyValue: "–",
     quoted: (value: string) => `“${value}”`,
     showingRange: (from: number, to: number, total: number) => `Showing ${from}–${to} of ${total}`,
+    close: "Close",
   },
 
   errors: {

@@ -1,11 +1,12 @@
 import "server-only";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { todayIsoDate, type IsoDate } from "@/lib/calendar";
 import { DomainError } from "@/lib/errors";
 import { depositFeeCents, type PaymentMethod } from "@/lib/fees";
 import { formatIsoDate } from "@/lib/format";
 import { getDb, type DbTransaction } from "@/server/db/client";
-import { deposits, type Deposit, type DepositStatus } from "@/server/db/schema";
+import { accounts, deposits, type Deposit, type DepositStatus } from "@/server/db/schema";
+import { loadReservedPayoutCents } from "@/server/queries/accrual";
 import { recordAudit } from "./audit";
 import { generateReference, lockAccountForUser, postLedgerEntry } from "./ledger";
 import type { ReviewInput } from "./types";
@@ -29,9 +30,8 @@ function creditedCents(deposit: Deposit): number {
 }
 
 /**
- * Books a deposit: the investor's balance is credited immediately with the amount minus
- * the payment method's fee (two ledger entries, so the fee stays visible), and the deposit
- * waits in "pending" until an admin reconciles it with the actual receipt date.
+ * Records a deposit the investor has sent. It waits in "pending" until an admin reconciles it
+ * with the actual receipt date; only then is the balance credited (see `reconcileDeposit`).
  * Re-submitting the same form (same idempotency key) returns the original deposit.
  */
 export async function createDeposit(input: CreateDepositInput): Promise<Deposit> {
@@ -58,23 +58,6 @@ export async function createDeposit(input: CreateDepositInput): Promise<Deposit>
       })
       .returning();
 
-    await postLedgerEntry(tx, {
-      accountId: account.id,
-      entryType: "deposit",
-      amountCents: deposit.amountCents,
-      depositId: deposit.id,
-      createdByUserId: input.userId,
-    });
-    if (deposit.feeCents > 0) {
-      await postLedgerEntry(tx, {
-        accountId: account.id,
-        entryType: "deposit_fee",
-        amountCents: -deposit.feeCents,
-        depositId: deposit.id,
-        createdByUserId: input.userId,
-      });
-    }
-
     await recordAudit(tx, {
       actorUserId: input.userId,
       action: "deposit.created",
@@ -94,8 +77,10 @@ export async function createDeposit(input: CreateDepositInput): Promise<Deposit>
 }
 
 /**
- * Marks a pending deposit as received and records the receipt day, which starts the 7-day
- * accrual delay and the 60-day minimum term. No money moves.
+ * Marks a pending deposit as received, records the receipt day (which starts the 7-day accrual
+ * delay and the 60-day minimum term) and credits the balance: the amount and the payment
+ * method's fee as two ledger entries, so the fee stays visible. Deposits submitted before the
+ * approval rule were credited at submission and are not credited again.
  *
  * The receipt day can't precede the booking day. Booking a month refuses to run while a
  * deposit that could earn in it is still pending, so a deposit reconciled afterwards always
@@ -104,7 +89,7 @@ export async function createDeposit(input: CreateDepositInput): Promise<Deposit>
 export async function reconcileDeposit(input: ReconcileDepositInput): Promise<void> {
   await getDb().transaction(async (tx) => {
     const [pendingDeposit] = await tx
-      .select({ createdAt: deposits.createdAt })
+      .select({ createdAt: deposits.createdAt, creditedAt: deposits.creditedAt })
       .from(deposits)
       .where(and(eq(deposits.id, input.recordId), eq(deposits.status, "pending")))
       .for("update");
@@ -116,6 +101,24 @@ export async function reconcileDeposit(input: ReconcileDepositInput): Promise<vo
     }
 
     const deposit = await finalizePendingDeposit(tx, input, "reconciled", input.receivedOn);
+    if (pendingDeposit.creditedAt === null) {
+      await postLedgerEntry(tx, {
+        accountId: deposit.accountId,
+        entryType: "deposit",
+        amountCents: deposit.amountCents,
+        depositId: deposit.id,
+        createdByUserId: input.reviewerId,
+      });
+      if (deposit.feeCents > 0) {
+        await postLedgerEntry(tx, {
+          accountId: deposit.accountId,
+          entryType: "deposit_fee",
+          amountCents: -deposit.feeCents,
+          depositId: deposit.id,
+          createdByUserId: input.reviewerId,
+        });
+      }
+    }
     await recordAudit(tx, {
       actorUserId: input.reviewerId,
       action: "deposit.reconciled",
@@ -133,20 +136,33 @@ export async function reconcileDeposit(input: ReconcileDepositInput): Promise<vo
 }
 
 /**
- * Cancels a deposit whose funds never arrived by reversing the credited amount (deposit
- * minus fee) in one entry. Fails with INSUFFICIENT_FUNDS if the money has already moved.
+ * Cancels a deposit whose funds never arrived. Nothing was credited, so nothing is booked.
+ * A deposit submitted before the approval rule was already credited: its credited amount
+ * (deposit minus fee) is reversed in one entry, which fails with INSUFFICIENT_FUNDS if that
+ * money has been withdrawn or is reserved for a pending withdrawal.
  */
 export async function rejectDeposit(input: ReviewInput): Promise<void> {
   await getDb().transaction(async (tx) => {
     const deposit = await finalizePendingDeposit(tx, input, "rejected");
 
-    await postLedgerEntry(tx, {
-      accountId: deposit.accountId,
-      entryType: "deposit_reversal",
-      amountCents: -creditedCents(deposit),
-      depositId: deposit.id,
-      createdByUserId: input.reviewerId,
-    });
+    if (deposit.creditedAt !== null) {
+      const [account] = await tx
+        .select({ balanceCents: accounts.balanceCents })
+        .from(accounts)
+        .where(eq(accounts.id, deposit.accountId))
+        .for("update");
+      const reservedCents = await loadReservedPayoutCents(tx, deposit.accountId);
+      if (account.balanceCents - creditedCents(deposit) < reservedCents) {
+        throw new DomainError("INSUFFICIENT_FUNDS");
+      }
+      await postLedgerEntry(tx, {
+        accountId: deposit.accountId,
+        entryType: "deposit_reversal",
+        amountCents: -creditedCents(deposit),
+        depositId: deposit.id,
+        createdByUserId: input.reviewerId,
+      });
+    }
 
     await recordAudit(tx, {
       actorUserId: input.reviewerId,
@@ -159,7 +175,11 @@ export async function rejectDeposit(input: ReviewInput): Promise<void> {
   });
 }
 
-/** The `status = 'pending'` condition makes processing a deposit twice impossible. */
+/**
+ * The `status = 'pending'` condition makes processing a deposit twice impossible. Reconciling
+ * stamps `credited_at` in the same statement (the database requires it for reconciled deposits);
+ * an earlier stamp from before the approval rule is kept.
+ */
 async function finalizePendingDeposit(
   tx: DbTransaction,
   input: ReviewInput,
@@ -171,6 +191,7 @@ async function finalizePendingDeposit(
     .set({
       status,
       receivedOn,
+      ...(status === "reconciled" ? { creditedAt: sql`coalesce(${deposits.creditedAt}, now())` } : {}),
       reviewedAt: new Date(),
       reviewedByUserId: input.reviewerId,
       reviewNote: input.note ?? null,

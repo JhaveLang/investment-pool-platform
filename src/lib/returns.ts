@@ -46,17 +46,47 @@ export type CapitalChange = {
 };
 
 /**
+ * Days on which an investor's capital neither earns nor loses: from the day they were deactivated up to, but not
+ * including, the day they were activated again (`until` null: still deactivated). Deactivated on the 10th and
+ * activated on the 20th leaves the 10th to the 19th out.
+ */
+export type PausedRange = {
+  from: IsoDate;
+  until: IsoDate | null;
+};
+
+/** How many days of `from`…`to` (inclusive) fall into the paused ranges; the ranges must not overlap. */
+export function pausedDaysBetween(from: IsoDate, to: IsoDate, paused: readonly PausedRange[]): number {
+  let days = 0;
+  for (const range of paused) {
+    const start = range.from > from ? range.from : from;
+    const lastPausedDay = range.until === null ? to : addDays(range.until, -1);
+    const end = lastPausedDay < to ? lastPausedDay : to;
+    if (start <= end) {
+      days += daysBetween(start, end) + 1;
+    }
+  }
+  return days;
+}
+
+/**
  * The earning capital summed over every day of the period ("cent-days"). Each change counts
  * from its effective day to the period end; changes from before the period count every day.
+ * Paused days (the investor was deactivated) don't count, so they bring neither return nor loss.
  */
-export function sumCapitalDays(changes: readonly CapitalChange[], periodStart: IsoDate, periodEnd: IsoDate): bigint {
+export function sumCapitalDays(
+  changes: readonly CapitalChange[],
+  periodStart: IsoDate,
+  periodEnd: IsoDate,
+  paused: readonly PausedRange[] = [],
+): bigint {
   let capitalDays = ZERO;
   for (const change of changes) {
     if (change.effectiveOn > periodEnd) {
       continue;
     }
     const countedFrom = change.effectiveOn < periodStart ? periodStart : change.effectiveOn;
-    const earningDays = daysBetween(countedFrom, periodEnd) + 1;
+    const earningDays = daysBetween(countedFrom, periodEnd) + 1 - pausedDaysBetween(countedFrom, periodEnd, paused);
     capitalDays += BigInt(change.amountCents) * BigInt(earningDays);
   }
   return capitalDays;

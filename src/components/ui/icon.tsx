@@ -77,6 +77,7 @@ const icons = {
   download: <path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19.5h14" />,
   chevronLeft: <path d="m14.5 6-6 6 6 6" />,
   chevronRight: <path d="m9.5 6 6 6-6 6" />,
+  chevronDown: <path d="m6 9.5 6 6 6-6" />,
   more: (
     <>
       <circle cx="5.5" cy="12" r="1.25" />
@@ -86,6 +87,14 @@ const icons = {
   ),
   shieldCheck: <path d="M12 3.5 5 6v5.5c0 4.25 2.9 7.6 7 9 4.1-1.4 7-4.75 7-9V6zM9 12l2.2 2.2L15.5 10" />,
   close: <path d="M6 6l12 12M18 6 6 18" />,
+  eye: (
+    <>
+      <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" />
+      <circle cx="12" cy="12" r="2.75" />
+    </>
+  ),
+  pencil: <path d="M15.5 5.5l3 3M4.5 19.5l1-4L15.8 5.2a1.5 1.5 0 0 1 2.1 0l.9.9a1.5 1.5 0 0 1 0 2.1L8.5 18.5z" />,
+  bell: <path d="M6.5 16.5V11a5.5 5.5 0 0 1 11 0v5.5l1.5 2h-14zM10 21a2.2 2.2 0 0 0 4 0" />,
   swap: <path d="M7 4.5 3.5 8 7 11.5M3.5 8h14M17 12.5l3.5 3.5-3.5 3.5M20.5 16h-14" />,
   globe: (
     <>

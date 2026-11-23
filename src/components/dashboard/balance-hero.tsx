@@ -45,6 +45,16 @@ export async function BalanceHero({ overview, trend, latestRate }: BalanceHeroPr
           >
             {format.currency(overview.balanceCents)}
           </p>
+          {overview.pendingDepositCents > 0 || overview.reservedCents > 0 ? (
+            <p className="amount mt-1 flex flex-col text-xs text-muted">
+              {overview.pendingDepositCents > 0 ? (
+                <span>{text.pendingDeposits(format.currency(overview.pendingDepositCents))}</span>
+              ) : null}
+              {overview.reservedCents > 0 ? (
+                <span>{text.reservedPayouts(format.currency(overview.reservedCents))}</span>
+              ) : null}
+            </p>
+          ) : null}
         </div>
       </div>
       {overview.totalReturnsCents !== 0 ? (

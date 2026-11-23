@@ -5,8 +5,9 @@ import { SignedAmount } from "@/components/ui/amount";
 import { buttonStyles } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
-import { FormField, inputStyles } from "@/components/ui/form-field";
+import { FormField } from "@/components/ui/form-field";
 import { PageHeader } from "@/components/ui/page-header";
+import { Select } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHeaderCell } from "@/components/ui/table";
 import { getI18n, pageMetadata } from "@/i18n/server";
 import { addMonths, firstDayOfMonth } from "@/lib/calendar";
@@ -90,19 +91,18 @@ export default async function AdminReturnsPage({ searchParams }: PageProps<"/adm
                     <label htmlFor="field-month" className="mb-1.5 block text-sm font-medium text-muted">
                       {text.returnsMonth}
                     </label>
-                    <select
+                    <Select
                       id="field-month"
                       name="month"
                       defaultValue={selectedMonth}
                       aria-invalid={fieldErrors.month ? true : undefined}
-                      className={inputStyles}
                     >
                       {schedule.bookableMonths.map((month) => (
                         <option key={month} value={month}>
                           {format.month(month)}
                         </option>
                       ))}
-                    </select>
+                    </Select>
                     {fieldErrors.month ? <p className="mt-1.5 text-sm text-loss">{fieldErrors.month}</p> : null}
                   </div>
                   <FormField
@@ -199,6 +199,9 @@ async function ReturnPreview({ calculation, rate }: { calculation: MonthlyReturn
                   <p className="font-medium text-fg">{row.investorName}</p>
                   <InvestorCode code={row.investorCode} />
                   <p className="text-xs text-subtle">{row.investorEmail}</p>
+                  {row.pausedDays > 0 ? (
+                    <p className="text-xs text-warn">{text.returnsPausedDays(row.pausedDays)}</p>
+                  ) : null}
                 </TableCell>
                 <TableCell className="amount text-right whitespace-nowrap">
                   {format.currency(row.averageCapitalCents)}

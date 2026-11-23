@@ -148,6 +148,8 @@ export const deposits = pgTable(
     status: depositStatusEnum("status").notNull().default("pending"),
     /** Day the payment arrived, entered when reconciling. Returns accrue from 7 days after it. */
     receivedOn: date("received_on", { mode: "string" }),
+    /** When amount and fee were booked to the ledger: on reconciliation (before 2026-11-23: on submission). */
+    creditedAt: timestamp("credited_at", { withTimezone: true }),
     /** Generated per form render; prevents double bookings from repeated submits. */
     idempotencyKey: uuid("idempotency_key").notNull(),
     createdAt: createdAt(),
@@ -162,6 +164,7 @@ export const deposits = pgTable(
       "deposits_received_when_reconciled",
       sql`(${table.status} = 'reconciled') = (${table.receivedOn} is not null)`,
     ),
+    check("deposits_credited_when_reconciled", sql`${table.status} <> 'reconciled' or ${table.creditedAt} is not null`),
     uniqueIndex("deposits_account_idempotency_idx").on(table.accountId, table.idempotencyKey),
     index("deposits_account_created_idx").on(table.accountId, table.createdAt),
     index("deposits_status_created_idx").on(table.status, table.createdAt),
@@ -185,6 +188,8 @@ export const withdrawals = pgTable(
     iban: varchar("iban", { length: 34 }),
     walletAddress: varchar("wallet_address", { length: 128 }),
     status: withdrawalStatusEnum("status").notNull().default("pending"),
+    /** When payout and fee were booked to the ledger: on approval (before 2026-11-23: on request). */
+    debitedAt: timestamp("debited_at", { withTimezone: true }),
     idempotencyKey: uuid("idempotency_key").notNull(),
     createdAt: createdAt(),
     reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
@@ -193,6 +198,7 @@ export const withdrawals = pgTable(
   },
   (table) => [
     check("withdrawals_amount_positive", sql`${table.amountCents} > 0`),
+    check("withdrawals_debited_when_approved", sql`${table.status} <> 'approved' or ${table.debitedAt} is not null`),
     check("withdrawals_fee_non_negative", sql`${table.feeCents} >= 0`),
     check(
       "withdrawals_single_destination",

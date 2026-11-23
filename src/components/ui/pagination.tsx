@@ -9,9 +9,15 @@ type PaginationProps = {
   basePath: string;
   /** Other query parameters (filters, sort) to keep when changing pages. */
   query?: Record<string, string | undefined>;
+  /** The query parameter holding the page; a second pager on the same page needs its own. */
+  param?: string;
+  /** Element id to scroll to after changing pages, when the list isn't at the top of the page. */
+  fragment?: string;
 };
 
-function buildPageHref(basePath: string, page: number, query: PaginationProps["query"]): string {
+type HrefOptions = Pick<PaginationProps, "basePath" | "query" | "param" | "fragment">;
+
+function buildPageHref({ basePath, query, param = "page", fragment }: HrefOptions, page: number): string {
   const searchParams = new URLSearchParams();
   for (const [key, value] of Object.entries(query ?? {})) {
     if (value) {
@@ -19,10 +25,10 @@ function buildPageHref(basePath: string, page: number, query: PaginationProps["q
     }
   }
   if (page > 1) {
-    searchParams.set("page", String(page));
+    searchParams.set(param, String(page));
   }
   const queryString = searchParams.toString();
-  return queryString ? `${basePath}?${queryString}` : basePath;
+  return `${queryString ? `${basePath}?${queryString}` : basePath}${fragment ? `#${fragment}` : ""}`;
 }
 
 /** First, last, and the current page with its neighbours; `null` marks a gap. */
@@ -43,7 +49,7 @@ function visiblePages(page: number, totalPages: number): Array<number | null> {
 
 const cellStyles = "grid h-8 min-w-8 place-items-center rounded-lg px-2 text-[13px] font-semibold transition-colors";
 
-export async function Pagination({ result, basePath, query }: PaginationProps) {
+export async function Pagination({ result, ...hrefOptions }: PaginationProps) {
   const { messages } = await getI18n();
   const { page, pageSize, totalPages, totalCount } = result;
   const firstShown = (page - 1) * pageSize + 1;
@@ -60,7 +66,7 @@ export async function Pagination({ result, basePath, query }: PaginationProps) {
       <div className="flex items-center gap-1.5">
         {page > 1 ? (
           <Link
-            href={buildPageHref(basePath, page - 1, query)}
+            href={buildPageHref(hrefOptions, page - 1)}
             className={stepStyles}
             aria-label={messages.common.previous}
           >
@@ -79,7 +85,7 @@ export async function Pagination({ result, basePath, query }: PaginationProps) {
           ) : (
             <Link
               key={candidate}
-              href={buildPageHref(basePath, candidate, query)}
+              href={buildPageHref(hrefOptions, candidate)}
               aria-current={candidate === page ? "page" : undefined}
               className={cn(
                 cellStyles,
@@ -91,11 +97,7 @@ export async function Pagination({ result, basePath, query }: PaginationProps) {
           ),
         )}
         {page < totalPages ? (
-          <Link
-            href={buildPageHref(basePath, page + 1, query)}
-            className={stepStyles}
-            aria-label={messages.common.next}
-          >
+          <Link href={buildPageHref(hrefOptions, page + 1)} className={stepStyles} aria-label={messages.common.next}>
             <Icon name="chevronRight" className="size-4" />
           </Link>
         ) : (

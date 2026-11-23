@@ -5,6 +5,7 @@ import {
   calculatePeriodReturn,
   minimumTermEnd,
   payoutDeadline,
+  pausedDaysBetween,
   sumCapitalDays,
   type CapitalChange,
 } from "./returns";
@@ -116,5 +117,40 @@ describe("calculatePeriodReturn", () => {
     // 1 billion euros all month at 1,2345 %
     const capitalDays = BigInt(100_000_000_000 * 31);
     expect(calculatePeriodReturn(capitalDays, 12_345, 31).returnCents).toBe(1_234_500_000);
+  });
+});
+
+describe("deactivated investors (paused days)", () => {
+  const fullMonth: CapitalChange[] = [{ effectiveOn: "2026-09-15", amountCents: 100_000 }];
+
+  it("stops earning on the deactivation day: deactivated on the 10th → 9 earning days in November", () => {
+    expect(sumCapitalDays(fullMonth, NOVEMBER_START, NOVEMBER_END, [{ from: "2026-11-10", until: null }])).toBe(
+      BigInt(100_000 * 9),
+    );
+  });
+
+  it("earns again from the activation day: deactivated 10th, activated 20th → 9 + 11 days", () => {
+    expect(sumCapitalDays(fullMonth, NOVEMBER_START, NOVEMBER_END, [{ from: "2026-11-10", until: "2026-11-20" }])).toBe(
+      BigInt(100_000 * 20),
+    );
+  });
+
+  it("earns nothing in a month spent fully deactivated, so a loss doesn't reach the account either", () => {
+    const capitalDays = sumCapitalDays(fullMonth, NOVEMBER_START, NOVEMBER_END, [{ from: "2026-10-05", until: null }]);
+    expect(capitalDays).toBe(BigInt(0));
+    expect(calculatePeriodReturn(capitalDays, -31_000, 30).returnCents).toBe(0);
+  });
+
+  it("ignores ranges outside the month and same-day reactivations", () => {
+    expect(pausedDaysBetween(NOVEMBER_START, NOVEMBER_END, [{ from: "2026-09-01", until: "2026-10-01" }])).toBe(0);
+    expect(pausedDaysBetween(NOVEMBER_START, NOVEMBER_END, [{ from: "2026-11-12", until: "2026-11-12" }])).toBe(0);
+  });
+
+  it("only removes paused days a change would have earned", () => {
+    const depositFrom15th: CapitalChange[] = [{ effectiveOn: "2026-11-15", amountCents: 100_000 }];
+    // paused 10th–19th: the deposit earns from the 20th to the 30th = 11 days
+    expect(
+      sumCapitalDays(depositFrom15th, NOVEMBER_START, NOVEMBER_END, [{ from: "2026-11-10", until: "2026-11-20" }]),
+    ).toBe(BigInt(100_000 * 11));
   });
 });

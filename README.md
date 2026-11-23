@@ -1,18 +1,19 @@
 # Bitcoin Magazin Pool – Investment Pool Platform
 
-A full-stack investment-pool platform. Investors register, deposit funds, request withdrawals and follow every money movement with a running balance. Admins manage investor accounts (create, edit, deactivate / activate), reconcile deposits, approve withdrawals, export CSV reports and review an immutable activity log. **The user interface is German by default, with an English option** (DE | EN switch in the header and on the login page).
+A full-stack investment-pool platform. Investors register, deposit funds, request withdrawals and follow every money movement with a running balance. Admins manage investor accounts (create, edit, deactivate / activate), reconcile deposits, approve withdrawals, export CSV reports and review an immutable activity log. **The user interface is German by default, with an English option** (DE | EN switch in the header and on the login page). A small public website (start page, news, contact, Impressum, privacy policy) sits in front of the sign-in.
 
 | Investor | Admin |
 | --- | --- |
-| Registration & login, with an automatically assigned investor ID (e.g. `01GR01`) | Pool overview (volume, open items) |
+| Registration & login, with an automatically assigned investor ID (e.g. `01GR01`); a welcome popup with the zero balance leads straight to the first deposit | Pool overview (volume, open items) with the approval queue: one card per investor, newest request first; several requests show as one card with their count, opening all of them in a grid |
 | Dashboard with live balance, returns and withdrawable amount | Reconcile deposits with their receipt date, or cancel them |
 | Deposits by bank transfer, crypto or exchange (`1.234,56` in German, `1,234.56` in English) | Approve or reject withdrawals (with 7-day payout deadline) |
 | Withdrawals to an IBAN, a wallet or an exchange, with live fee preview | Book the monthly result for every investor, with preview |
-| Paginated ledger with resulting balance per entry | Investor list with status filter (active / deactivated) and search by name, email or investor ID |
-| Profile with account details and own password change | Create investors; investor detail page: edit name and email, set a new password, deactivate / activate |
+| Paginated ledger with resulting balance per entry | Investor list with status filter (all / active / deactivated) and search by name, email or investor ID |
+| Profile with account details and own password change | Create investors; investor list with the chosen month's investment, return and deposits / withdrawals; investor view page with everything about one investor; edit page: name and email, new password, deactivate / activate |
 | | CSV reports (journal, deposits, withdrawals, balances), with investor ID |
 | | Activity log of all security- and money-relevant actions |
 | | Own profile with password change |
+| Live updates: balance, open requests and ledger refresh by themselves when the admin decides | Real-time notifications: bell and toast for new withdrawal requests, deposits and registrations |
 
 ## Tech stack
 
@@ -101,28 +102,46 @@ The admin seed only creates the account if it does not exist; changing `ADMIN_PA
 
 ---
 
+## First steps for a new investor
+
+A new investor signs up at `/register` and lands on the dashboard with a zero balance and a **welcome popup**:
+- what the popup shows: the balance (0,00 €), how a first deposit works (create it, transfer with the reference shown, credited after fees once the payment is matched), and the 60-day minimum term and 7-day payout deadline;
+- **Erste Einzahlung anlegen** opens the deposit form; **Später**, Esc or a click beside it closes the popup.
+
+Signing in shows the popup again until the investor has started a first deposit, which also covers investors created by the admin. After that, it never appears. Registration and sign-in redirect to `/dashboard?welcome=1`; the dashboard opens the popup only while the investor has no deposit, and removes the parameter at once, so a refresh doesn't open it again.
+
+## Approval queue on the admin overview
+
+Open withdrawals and unreconciled deposits appear as **one card per investor**, the investor with the newest request first (at most 8 cards).
+- **One request:** its card keeps its own controls: reconcile with the receipt date, approve, reject or cancel.
+- **Several requests:** they show as one card with a count badge, the deposit and withdrawal totals, the most urgent payout deadline and "Alle N anzeigen". A click opens a popup that fades and scales in, with all of the investor's requests popping into a grid one after another (3 columns on wide screens, 1 on phones), each with its own controls.
+- **Deciding requests in the popup:** the popup stays open and the count updates. When only one request is left, the investor's card turns back into a normal card.
+- The overview loads up to 200 open requests of each kind for this, so the counts are complete in practice. Without motion (reduced-motion setting) the popup simply appears.
+
 ## How money moves
 
 All balances are derived from an **append-only ledger**. Every movement is one immutable row in `ledger_entries` holding timestamp, signed amount and **resulting balance**. Amounts are stored as integer cents (`bigint`), never as floats.
 
 | Action | Ledger effect | Status |
 | --- | --- | --- |
-| Investor deposits | `+amount` (deposit) and `−fee` (deposit_fee) immediately | `pending` until reconciled |
-| Admin reconciles deposit, entering the receipt date | none | `reconciled` |
-| Admin cancels deposit (funds never arrived) | `−(amount − fee)` (deposit_reversal) | `rejected` |
-| Investor requests withdrawal | `−payout` (withdrawal) and `−fee` (withdrawal_fee) immediately | `pending` |
-| Admin approves withdrawal (payout sent) | none | `approved` |
-| Admin rejects withdrawal | `+(payout + fee)` (withdrawal_reversal) | `rejected` |
+| Investor submits a deposit | none – shown as "awaiting reconciliation" | `pending` |
+| Admin reconciles the deposit, entering the receipt date | `+amount` (deposit) and `−fee` (deposit_fee) | `reconciled` |
+| Admin cancels the deposit (funds never arrived) | none | `rejected` |
+| Investor requests a withdrawal | none – payout + fee are **reserved** (no longer available) | `pending` |
+| Admin approves the withdrawal (payout sent) | `−payout` (withdrawal) and `−fee` (withdrawal_fee) | `approved` |
+| Admin rejects the withdrawal | none – the reservation is released | `rejected` |
 | Admin books a month's result | `±return` (monthly_return) per account | – |
 
-Fee entries are only written when the fee is above zero (crypto is free).
+Fee entries are only written when the fee is above zero (crypto is free). The balance therefore changes only when the admin approves; the investor sees open deposits and withdrawals under "Offene Vorgänge" and on the dashboard ("+… warten auf Abgleich", "… für Auszahlungen reserviert"). What can be withdrawn is the balance minus capital in its minimum term minus reserved payouts.
+
+**Items from before the approval rule** (migration `0005`, 2026-11-23): until then deposits and withdrawals were booked when the investor submitted them. `deposits.credited_at` / `withdrawals.debited_at` record when an item was booked, and the migration sets them for all existing rows, so those items are never booked twice: approving them books nothing, and rejecting them still writes the reversal (`deposit_reversal`, `−(amount − fee)`) or refund (`withdrawal_reversal`, `+(payout + fee)`) as before. Cancelling such a deposit is refused while its money is reserved for a pending withdrawal.
 
 Guarantees:
 
-- **Atomic and race-free.** Every posting runs in one database transaction that locks the account row (`SELECT … FOR UPDATE`), checks the balance, inserts the ledger row and updates the balance. Parallel withdrawals can never overdraw an account. `postLedgerEntry()` in `src/server/services/ledger.ts` is the only code path that changes a balance.
+- **Atomic and race-free.** Every posting runs in one database transaction that locks the account row (`SELECT … FOR UPDATE`), checks the balance, inserts the ledger row and updates the balance. Withdrawal requests are checked against the balance minus earlier reservations under the same lock, so parallel requests can never reserve more than there is, and an approval can always be debited. `postLedgerEntry()` in `src/server/services/ledger.ts` is the only code path that changes a balance.
 - **Immutable history.** PostgreSQL triggers block `UPDATE`, `DELETE` and `TRUNCATE` on `ledger_entries` and `audit_logs`. Corrections are always new reversal entries.
 - **No double bookings.** Each form carries an idempotency key, so a double click or a retried request books only once.
-- **Database constraints as a safety net.** Balances can't be negative, amounts must be positive, each ledger entry references exactly one deposit, withdrawal or booked month, and each account receives at most one return per month.
+- **Database constraints as a safety net.** Balances can't be negative, amounts must be positive, each ledger entry references exactly one deposit, withdrawal or booked month, each account receives at most one return per month, a reconciled deposit is always credited and an approved withdrawal always debited.
 - **Consistency check.** The query below should always return `true`:
 
   ```sql
@@ -130,7 +149,7 @@ Guarantees:
   FROM accounts a;
   ```
 
-> Deposits are credited immediately (net of fee), then confirmed by an admin ("reconcile"), so the balance updates as soon as the investor acts. Returns and the minimum term are driven by the receipt date the admin enters when reconciling, not by the booking time.
+> Deposits are credited when the admin reconciles them and withdrawals debited when the admin approves them; the investor's open dashboard shows the new balance within about a second of that decision (live update, see below), and every later page load shows it too. Returns and the minimum term are driven by the receipt date the admin enters when reconciling, and a withdrawal stops earning on the day it is requested, even though it is debited later.
 
 ## Balance rules
 
@@ -169,27 +188,55 @@ Safeguards when booking:
 - A month can't be booked while an unreconciled deposit could still earn in it (booked at least 7 days before month end).
 - Withdrawals still awaiting a decision count as paid out; the preview warns about them. A withdrawal rejected only after its month was booked doesn't change that month (booked entries are immutable), so decide open withdrawals before booking where possible.
 - Booking recalculates under lock and stops if the total differs from the confirmed preview.
-- A loss larger than an investor's current balance (because they withdrew in the meantime) is capped at the balance and listed in the activity log.
+- Deactivated investors earn and lose nothing from the day of deactivation up to the day before they are activated again (deactivated on the 10th, activated on the 20th → no result for the 10th–19th). The periods come from the activity log's deactivation/activation entries; the preview marks affected investors with the number of days.
+- A loss larger than an investor's current balance minus payouts reserved for pending withdrawals (because they withdrew or requested a withdrawal in the meantime) is capped at that amount and listed in the activity log, so approving the withdrawal later can never overdraw the account.
 - `return_periods` is append-only, like the ledger.
 
 ## Profile & account management
 
-Admins manage investors on **Anleger / Investors** (`/admin/investors`): create (`/admin/investors/new`), view (list and detail page), edit (name, email, password) and deactivate / activate. Investors are never deleted, because every booking and log entry must stay attached to its account.
+Admins manage investors on **Anleger / Investors** (`/admin/investors`): create (`/admin/investors/new`), view (`/admin/investors/<id>`), edit (`/admin/investors/<id>/edit`: name, email, password) and deactivate / activate. Investors are never deleted, because every booking and log entry must stay attached to its account. Each row of the list has an **Aktionen** column with three icon buttons (the tooltip names the action): **Ansehen** (eye) opens the view page, **Bearbeiten** (pencil) the edit page, **Deaktivieren / Aktivieren** (lock) switches the status (the edit page additionally takes a note and shows remaining money). Deactivating always asks for confirmation first, in the list and on the edit page; activating doesn't.
+
+- **Investor list and month filter:** columns investor ID, name, balance, **Anlage am 1. {Monat}** (investment on the 1st), **Rendite {Monat}** (the month's return), **Sonstiges {Monat}** (the month's deposits and withdrawals as `+1.074,00 € (26.09.)`, newest first, trimmed to two entries and `+N`; a click opens a popup with all of them, their reference and status, and the booked total), registered, actions. There is no email or last sign-in column (the search still finds investors by email; the last sign-in shows on the view and edit pages). The **Monat** select (current month by default, back to the first deposit) chooses the month; it keeps the search and the status filter, and paging keeps the month. The figures follow the booking rules: amounts are net of fees (a deposit counts with its credit after the fee, a withdrawal with payout plus fee), dated by value date (deposits by their receipt date, withdrawals by their request day), and a month's return counts from the 1st of the next month, so it is part of the next month's investment. Open requests appear marked "offen" but aren't counted yet; "–" means nothing to show (no investment yet, or the month's return isn't booked). Because bookings are dated by value date, a figure for a past month can still change when a late deposit is reconciled or a return is booked.
+- **CSV exports of the monthly statement:**
+  - **All investors** ("CSV" above the list): choose **Von / Bis** (default: the shown month and the two before it). One row per investor of the current filter (status and search, all pages) with three columns per month, oldest month first, like the client's sheet: `Anlage am 1. Okt. 2026 (EUR)`, `Rendite Okt. 2026 (EUR)`, `Sonstiges Okt. 2026`. `GET /api/admin/investors/statements?from=YYYY-MM&to=YYYY-MM&status=…&q=…`.
+  - **One investor** (download icon in the row: all months; or "CSV" on the view page with a month range): one row per month with investment on the 1st, return, the booked deposits and withdrawals, and Sonstiges. `GET /api/admin/investors/<id>/statement?from=YYYY-MM&to=YYYY-MM`.
+  - Amounts are after fees and written as plain numbers (`10000,00`); Sonstiges reads `26.09.2026: +1074,00 · 13.10.2026: -415,00 (offen)`, oldest first. Without a range, the export runs from the first deposit to the current month; swapped months are put in order; at most 60 months. Semicolons in German, commas in English, like the other CSV reports. Every export is logged as "Bericht exportiert" with its month range (and the investor).
+- **Investor view page** (`/admin/investors/<id>`): balance, freely available, in the minimum term and total returns; the **monthly statement** (one row per month from the first deposit, newest first, with the same three figures as the list and the same Sonstiges popup; "CSV" downloads it for a month range); all deposits and withdrawals (newest 50 each, with the total); the paginated ledger; and the investor's **own activity log** (only what they did themselves: registration, sign-ins and sign-outs including failed or refused attempts, deposits booked, withdrawals requested, password changes; paginated). The admin's decisions show in the request tables and in the pool-wide activity log. **Bearbeiten** leads to the edit page. New investors land here after creation.
 
 - **Investor ID:** every investor gets a unique, random ID of the shape `01GR01` (2 digits, 2 letters without I and O, 2 digits) when registering. It reveals nothing about the number of investors, never changes, and is shown on the profile, in the admin investor list (searchable), the review queues, the activity log and the CSV reports.
 - **Profile** (`/profile` for investors, `/admin/profile` for the admin): opened from the name in the top bar (on phones from the account menu). Shows ID (investors only), name, email and member-since date, and lets users change their own password. Changing it needs the current password, signs the user out on all other devices and is rate-limited to 5 attempts per 15 minutes.
-- **Name and email** can only be changed by the admin on the investor detail page (`/admin/investors/<id>`, reached from the Investors list). Investors who need a change contact the admin; there is no request workflow. A name or email change does not sign the investor out.
-- **Forgotten password:** the app sends no email. The admin sets a new password on the investor detail page; it replaces the old one at once, signs the investor out everywhere and stays valid until the investor changes it on their profile.
+- **Name and email** can only be changed by the admin on the investor edit page (`/admin/investors/<id>/edit`, reached from the Investors list or the view page). Investors who need a change contact the admin; there is no request workflow. A name or email change does not sign the investor out.
+- **Forgotten password:** the app sends no email. The admin sets a new password on the investor edit page; it replaces the old one at once, signs the investor out everywhere and stays valid until the investor changes it on their profile.
 - **Creating investors:** "Neuer Anleger" on the Investors list. Name, email and a starting password (same rules as registration); the investor gets an investor ID and a zero-balance account, and the admin passes the email and starting password on. Logged as `user.created`.
-- **Deactivate / activate:** on the investor detail page, with an optional note for the activity log. A deactivated investor is signed out everywhere and cannot sign in (with the right password they see "account deactivated", with a wrong one the usual generic error). Money is not touched: the balance keeps receiving the monthly result, and open deposits and withdrawals can still be reconciled, approved or rejected; the investor can withdraw again once activated. Activating restores sign-in with the existing password. The Investors list shows active investors by default (filter: Active / Deactivated / All); a search without a chosen filter, such as from the top bar, covers all. The admin overview counts active investors only; the balances CSV has a status column. Admin accounts can never be deactivated (database check).
+- **Deactivate / activate:** in the Investors list or on the investor edit page (there with an optional note for the activity log). A deactivated investor is signed out everywhere and cannot sign in (with the right password they see "account deactivated", with a wrong one the usual generic error). The balance stays, but it **earns no return and takes no loss** from the day of deactivation until the day the investor is activated again (see Monthly returns); open deposits and withdrawals can still be reconciled, approved or rejected, and the investor can withdraw again once activated. Activating restores sign-in with the existing password and returns from that day. The Investors list shows all investors by default (tabs: All / Active / Deactivated); searches, such as from the top bar, cover all unless a tab is chosen. The admin overview counts active investors only; the balances CSV has a status column. Admin accounts can never be deactivated (database check).
 - The admin's own email and name are not editable in the UI. The seed never changes an existing admin's password, so `ADMIN_PASSWORD` does not conflict with a password changed on `/admin/profile`.
-- **Updating an existing installation:** run `npm run db:migrate` immediately after updating the code. Until it has run, sign-in, registration and the admin pages fail with `column "investor_code" does not exist` or `column "deactivated_at" does not exist`. Compose runs it through the `migrate` service. Migration `0003` adds `users.investor_code` and assigns a code to every existing investor; `0004` adds `users.deactivated_at` (every existing investor stays active).
+- **Updating an existing installation:** run `npm run db:migrate` immediately after updating the code. Until it has run, sign-in, registration and the admin pages fail with `column "investor_code" does not exist` or `column "deactivated_at" does not exist`. Compose runs it through the `migrate` service. Migration `0003` adds `users.investor_code` and assigns a code to every existing investor; `0004` adds `users.deactivated_at` (every existing investor stays active); `0005` adds `deposits.credited_at` and `withdrawals.debited_at` for approval-only booking (all existing items count as already booked).
+
+## Public website
+
+Open to everyone, in German and English, in the app's design: **Startseite** (`/`), **News** (`/news`), **Kontakt** (`/contact`), plus **Impressum** (`/imprint`) and **Datenschutz** (`/privacy`) in the footer. The header's **Anmelden** button (the old site's "Konten" tab) opens `/login`; signed-in users see **Mein Konto** instead, leading to their dashboard or the admin overview. `/` used to redirect to the sign-in or the home page; it now always shows the start page.
+
+- **Start page:** the pool's name and founding date, the way into the online account for existing investors, how the account works (minimum term, start of returns, payout deadline, journal), the latest three notices, the contact address and, while set, the note that the pool takes no new investors. It makes no offer and states no returns.
+- **News:** the old website's operational notices from January 2024 on (49 entries: support hours, outages, statements and balances, bank accounts, payment methods, limits and fees, closures, trader departures), newest first and grouped by year. Entries that mixed an operational notice with a bonus or a return figure were shortened to the notice; entries that were only promotional (see below) are not listed. Entries live in `src/content/news.ts` (date plus German and English text); the page sorts them.
+- **Contact:** general enquiries (`bitcoin-magazin-pool@online.ms`) and the billing team that sends the statements (`bitcoin-magazin-pool-1@tuta.com`, no replies), as email links. The app sends no email, so there is no contact form.
+- **Legal pages** (`src/content/legal.ts`): templates. What the app itself does is filled in (stored data, the two necessary cookies, no tracking); the operator's details stand in [brackets]. A notice on each page says so until `LEGAL_TEMPLATES_PENDING` is set to `false`, which should only happen once the placeholders are filled and a lawyer has reviewed the texts.
+- Contact addresses, founding month, "closed to new investors since" and the copyright year live in `src/config/site.ts`.
+- There is no risk notice page: the user removed the drafted template; it can be added again once the operator supplies its own text.
+- Deliberately not part of the site: return figures or targets, fixed-return packages, referral commissions, review bonuses, invitations to invest, and the named waiting list (see the design note in `docs/superpowers/specs/`).
+
+## Real-time notifications and live balances
+
+- **Investors:** as soon as the admin reconciles or cancels one of their deposits, approves or rejects a withdrawal, or books a monthly return, the investor's open dashboard and ledger reload their data by themselves and a toast says what happened ("Ihre Einzahlung … ist abgeglichen: 980,00 € gutgeschrieben"). The balance therefore changes on screen within about a second of the admin's decision, without a refresh. Each investor receives only events about their own account; a booked month only reaches investors who received a return, with their own amount. Deposit and withdrawal pages show the toast but don't reload, so an open form keeps its state (and its idempotency key). The dashboard's 30-second refresh stays as a fallback.
+- **Admins:** every new withdrawal request, deposit and investor registration appears at once in the admin area. A toast pops up, the bell in the top bar counts unread events, and its panel lists the latest ones with a link to the queue or the investor. On the overview, the queues and the investor list, the page data also reloads, so a new request appears at the top of the approval queue without a manual refresh. Pages with forms (new investor, monthly result) are not reloaded.
+- **How:** writing the activity-log entry for one of these events also sends a PostgreSQL `NOTIFY` inside the same transaction, so a booking that fails or a repeated form submit never notifies. Each server process keeps one `LISTEN` connection and passes events to the open pages through Server-Sent Events: `GET /api/admin/notifications` (admins only) and `GET /api/investor/notifications` (the signed-in investor only; the recipient is resolved on the server from the deposit, withdrawal or return booking, never from the request). The browser reconnects on its own (the server ends each stream after 4 minutes, so the session is checked again) and missed events are replayed from the activity log. The bell's read marker is stored per browser.
+- **Fallback:** if the stream can't connect, the panel shows "Getrennt" and the overview keeps refreshing every 30 seconds as before.
+- **Deployment:** reverse proxies must not buffer the stream. The endpoint sends `X-Accel-Buffering: no` and `Cache-Control: no-transform` for nginx and compressors; Caddy needs nothing. Over plain HTTP/1.1 (local development) browsers allow about 6 connections per site, so many open admin tabs at once can stall; HTTPS with HTTP/2 in production lifts this limit.
 
 ## Security
 
 - **Passwords**: scrypt (memory-hard, built into Node) with a per-user salt. Login timing is equalised for unknown emails.
 - **Sessions**: random 256-bit tokens in an `httpOnly`, `SameSite=Lax` cookie (`Secure` in production). Only the SHA-256 hash is stored in the database. Sessions expire after 12 hours.
-- **Role-based access**: `investor` and `admin`. Every page, Server Action and Route Handler calls `requireInvestor()` / `requireAdmin()` (`src/server/auth/guards.ts`). The proxy only performs an optimistic redirect.
+- **Role-based access**: `investor` and `admin`. Every page, Server Action and Route Handler calls `requireInvestor()` / `requireAdmin()` (`src/server/auth/guards.ts`). The proxy only performs an optimistic redirect. The notification streams answer 401 without a session and 403 to the other role.
 - **Input validation**: Zod schemas for every form (`src/lib/validation.ts`), including IBAN checksum and amount limits (1,00 € – 1.000.000,00 €).
 - **Rate limiting** (Redis): login per IP and per email, registration per IP, money movements per user. If Redis is unreachable, requests are allowed (fail-open) and an error is logged.
 - **Activity logging**: registrations, logins (including failed ones), logouts, every booking, every admin decision and every report export, with actor, IP and details. Account events: `auth.password_changed` and `auth.password_change_failed` (own password), `user.updated` (admin edits name or email, with old and new value), `user.password_reset` (admin sets a password), `user.created`, `user.deactivated` and `user.activated` (with the admin's optional note) and `auth.login_blocked` (correct password for a deactivated account). Passwords and hashes are never logged.
@@ -202,19 +249,22 @@ Admins manage investors on **Anleger / Investors** (`/admin/investors`): create 
 ```
 src/
 ├── app/                    Routes only (thin pages)
+│   ├── (public)/           Public website: /, /news, /contact, /imprint, /privacy
 │   ├── (auth)/             /login, /register
 │   ├── (investor)/         /dashboard, /transactions, /deposit, /withdraw, /profile
-│   ├── admin/              /admin, deposits, withdrawals, investors (+ new, detail page), returns, reports, activity, profile
-│   └── api/                /api/health, /api/reports/[reportType] (CSV)
+│   ├── admin/              /admin, deposits, withdrawals, investors (+ new, view page, edit page), returns, reports, activity, profile
+│   └── api/                /api/health, /api/reports/[reportType] and /api/admin/investors/statements, …/[userId]/statement (CSV), /api/admin/notifications and /api/investor/notifications (live events)
 ├── actions/                Server Actions: validate → authorize → call a service
 ├── components/
 │   ├── ui/                 Design-system primitives (Button, Card, Table, FormField, …)
 │   ├── layout/             App shell: sidebar, top bar and navigation
+│   ├── public/             Public website: header, footer, legal page
 │   ├── charts/             Sparkline for balance trends (inline SVG, no chart library)
 │   ├── dashboard/          Overview cards shared by the investor and admin dashboards
 │   ├── account/            Profile view and password form (shared by investor and admin)
 │   ├── auth/ transactions/ admin/   Feature components
-├── config/navigation.ts    Menu entries
+├── config/                Menu entries (navigation.ts), public website facts (site.ts)
+├── content/                Public website texts: news.ts, legal.ts
 ├── lib/                    Pure helpers: money parsing, formatting, IBAN, CSV, validation
 ├── i18n/                   Languages: dictionaries (messages/de.ts, messages/en.ts), locale config, helpers
 ├── server/
@@ -222,11 +272,13 @@ src/
 │   ├── db/                 Drizzle schema and client
 │   ├── services/           Business logic and transactions (ledger, deposits, withdrawals, reports, account)
 │   ├── queries/            Read-only queries for pages and exports
-│   └── rate-limit.ts, redis.ts, env.ts
+│   └── rate-limit.ts, redis.ts, env.ts, notifications.ts (live admin events)
 └── proxy.ts                Optimistic auth redirect
 drizzle/                    SQL migrations (incl. append-only triggers)
 scripts/seed.ts             Admin seed
 ```
+
+Lists show the newest entry first: queues, ledgers, request histories, investors (by registration), activity log, booked months and notifications. The one exception is the admin's payout-deadline card, which lists the oldest (most urgent) open withdrawals first. CSV exports stay in chronological order for spreadsheets.
 
 Conventions: descriptive camelCase names (single-letter identifiers are rejected by ESLint `id-length`). UI text is never hard-coded; it lives in the dictionaries under `src/i18n/messages/`. Money is handled as integer cents end to end. Dates are always shown in `Europe/Berlin`.
 
@@ -290,5 +342,5 @@ npm run typecheck
 | Login does nothing in production over HTTP | Cookies are `Secure` in production. Serve via HTTPS, or set `COOKIE_SECURE=false` for a test setup. |
 | `Invalid environment configuration` | `DATABASE_URL` or `REDIS_URL` is missing. See `.env.example`. |
 | Port 5432/6379 already in use locally | Compose doesn't publish db/redis ports. For local dev, point `DATABASE_URL`/`REDIS_URL` at your existing services. |
-| Sign-in, registration or the admin pages fail with `column "investor_code" does not exist` or `column "deactivated_at" does not exist` | The code was updated but the migrations have not run yet. Run `npm run db:migrate`. |
+| Pages fail with `column "investor_code"`, `"deactivated_at"`, `"credited_at"` or `"debited_at" does not exist` | The code was updated but the migrations have not run yet. Run `npm run db:migrate`. |
 | Need a clean database in development | Ledger and audit tables are append-only (TRUNCATE is blocked). Drop and recreate the database, then run `npm run db:migrate && npm run db:seed`. |

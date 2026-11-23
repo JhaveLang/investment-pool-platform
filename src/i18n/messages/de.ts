@@ -1,6 +1,7 @@
 import type { AuditAction, DepositStatus, InvestorStatus, LedgerEntryType, WithdrawalStatus } from "@/server/db/schema";
 import type { DomainErrorCode } from "@/lib/errors";
 import type { PaymentMethod } from "@/lib/fees";
+import type { AdminNotificationType, InvestorNotificationType } from "@/lib/notifications";
 
 /**
  * All user-facing text in German (the default locale). Components never hard-code
@@ -10,6 +11,52 @@ export const de = {
   app: {
     name: "Bitcoin Magazin Pool",
     description: "Ihr Investment-Pool: Einzahlungen, Auszahlungen und Kontostand in Echtzeit.",
+  },
+
+  // The public website: start page, news, contact and legal pages.
+  site: {
+    navLabel: "Website",
+    footerNav: "Website und Rechtliches",
+    menu: "Menü",
+    home: "Startseite",
+    news: "News",
+    contact: "Kontakt",
+    signIn: "Anmelden",
+    myAccount: "Mein Konto",
+    imprint: "Impressum",
+    privacy: "Datenschutz",
+    tagline: "Der Pool des Bitcoin Magazins",
+    since: (month: string) => `Seit ${month}`,
+    heroText:
+      "Hier melden sich Anleger in ihrem Online-Konto an, lesen die aktuellen Mitteilungen und erreichen das Team.",
+    allNews: "Alle Mitteilungen",
+    forInvestors: "Für Anleger",
+    accountTitle: "Ihr Online-Konto",
+    accountText: "Kontostand, Ein- und Auszahlungen und jede Buchung – nach der Anmeldung jederzeit im Blick.",
+    accountFeatures: [
+      "Kontostand, sobald eine Buchung erfolgt",
+      "Ein- und Auszahlungen beantragen und verfolgen",
+      "Alle Buchungen mit Saldo",
+    ],
+    closedSince: (date: string) => `Der Pool ist seit dem ${date} für neue Anleger geschlossen.`,
+    howItWorks: "So funktioniert Ihr Konto",
+    latestNews: "Aktuelle Mitteilungen",
+    contactTitle: "Fragen?",
+    contactText: "Schreiben Sie uns. Bei ausführlichen Fragen rufen wir Sie gerne auf unsere Kosten zurück.",
+    newsTitle: "News",
+    newsSubtitle: "Mitteilungen zum Betrieb des Pools, neueste zuerst.",
+    newsEmpty: "Aktuell gibt es keine Mitteilungen.",
+    contactPageTitle: "Kontakt",
+    contactPageSubtitle:
+      "Wir antworten per E-Mail; bei ausführlichen Fragen rufen wir Sie gerne auf unsere Kosten zurück.",
+    generalTitle: "Allgemeine Anfragen",
+    generalText: "Für alle Fragen zum Pool und zu Ihrem Konto.",
+    billingTitle: "Abrechnungsteam",
+    billingText: "Versendet die Kontoauszüge. Bitte nicht auf diese Adresse antworten.",
+    investorHint: "Bereits Anleger? Kontostand, Anträge und Buchungen sehen Sie direkt in Ihrem Konto.",
+    templateNotice:
+      "Vorlage: Angaben in eckigen Klammern ergänzt der Betreiber. Bitte den Text vor der Veröffentlichung rechtlich prüfen lassen.",
+    copyright: (from: number, to: number) => `© ${from}–${to} Bitcoin Magazin Pool`,
   },
 
   nav: {
@@ -106,6 +153,21 @@ export const de = {
   dashboard: {
     title: "Übersicht",
     greeting: (name: string) => `Willkommen, ${name}`,
+    // Popup after signing up, and after signing in until the first deposit.
+    welcome: {
+      title: (name: string) => `Willkommen, ${name}!`,
+      description: "Ihr Konto ist eingerichtet und bereit für Ihre erste Einzahlung.",
+      stepsTitle: "So funktioniert Ihre erste Einzahlung",
+      steps: [
+        "Einzahlung anlegen: Betrag und Zahlungsweg wählen – Banküberweisung, Krypto oder Börse.",
+        "Den Betrag mit der angezeigten Referenz überweisen.",
+        "Sobald unser Team den Zahlungseingang abgeglichen hat, wird der Betrag nach Gebühr Ihrem Konto gutgeschrieben.",
+      ],
+      terms: (termDays: number, payoutDays: number) =>
+        `Eingezahltes Kapital ist ${termDays} Tage gebunden; Auszahlungen werden binnen ${payoutDays} Tagen bearbeitet.`,
+      firstDeposit: "Erste Einzahlung anlegen",
+      later: "Später",
+    },
     sumReturns: "Verbuchte Rendite",
     balance: "Kontostand",
     availabilityTitle: "Verfügbarkeit",
@@ -145,7 +207,10 @@ export const de = {
     ledgerTitle: "Buchungen & laufender Saldo",
     ledgerSubtitle: "Jede Kontobewegung mit Zeitstempel und resultierendem Saldo.",
     moveMoneyTitle: "Geld bewegen",
-    creditedInstantly: "Sofort gutgeschrieben",
+    creditedInstantly: "Gutschrift nach Abgleich",
+    reserved: "Für Auszahlungen reserviert",
+    pendingDeposits: (amount: string) => `+${amount} warten auf Abgleich`,
+    reservedPayouts: (amount: string) => `${amount} für Auszahlungen reserviert`,
     paymentRoutes: "Zahlungswege",
     openRequestsTitle: "Offene Vorgänge",
     openCount: (count: number) => `${count} offen`,
@@ -206,9 +271,10 @@ export const de = {
     creditShare: (share: string) => `${share} Gutschrift`,
     submit: "Einzahlung buchen",
     pending: "Wird gebucht …",
-    info: "Der Betrag abzüglich Gebühr wird Ihrem Konto sofort gutgeschrieben und von unserem Team mit dem Zahlungseingang abgeglichen. Rendite erhalten Sie ab dem 7. Tag nach Zahlungseingang (Eingang am 1. → ab dem 8.). Eingezahltes Kapital ist 60 Tage gebunden; Renditen sind jederzeit auszahlbar.",
-    success: (reference: string) => `Einzahlung erfolgreich gebucht. Referenz: ${reference}`,
-    credited: (amount: string) => `Gutschrift ${amount}`,
+    info: "Der Betrag abzüglich Gebühr wird Ihrem Konto gutgeschrieben, sobald unser Team die Zahlung mit dem Zahlungseingang abgeglichen hat. Rendite erhalten Sie ab dem 7. Tag nach Zahlungseingang (Eingang am 1. → ab dem 8.). Eingezahltes Kapital ist 60 Tage gebunden; Renditen sind jederzeit auszahlbar.",
+    success: (reference: string) =>
+      `Einzahlung erfasst. Sie wird gutgeschrieben, sobald die Zahlung abgeglichen ist. Referenz: ${reference}`,
+    credited: (amount: string) => `${amount} nach Gebühr`,
     receivedOn: (date: string) => `Eingang am ${date}`,
     historyTitle: "Ihre Einzahlungen",
     empty: "Sie haben noch keine Einzahlungen getätigt.",
@@ -221,9 +287,9 @@ export const de = {
     accrualValue: (day: number) => `ab Tag ${day} nach Eingang`,
     termLabel: "Mindestlaufzeit",
     termValue: (days: number) => `${days} Tage ab Eingang`,
-    newBalance: "Neuer Kontostand",
+    newBalance: "Kontostand nach Abgleich",
     submitAmount: (amount: string) => `Einzahlung buchen (${amount})`,
-    ledgerNote: "Wird unveränderlich im Journal gebucht",
+    ledgerNote: "Nach dem Abgleich unveränderlich im Journal gebucht",
   },
 
   withdrawals: {
@@ -245,9 +311,10 @@ export const de = {
     maxPayout: (amount: string) => `Maximal auszahlbar auf diesem Weg: ${amount}`,
     locked: (amount: string, date: string) =>
       `${amount} sind noch in der 60-tägigen Mindestlaufzeit (frei ab ${date}). Renditen sind jederzeit auszahlbar.`,
-    info: "Sie erhalten den vollen Betrag, die Gebühr wird zusätzlich abgebucht. Ab dem Tag des Antrags erhält der Betrag keine Rendite mehr; die Auszahlung erfolgt innerhalb von 7 Tagen. Wird der Antrag abgelehnt, erfolgt automatisch eine Rückbuchung.",
-    success: (reference: string) => `Auszahlung beantragt. Referenz: ${reference}`,
-    debited: (amount: string) => `Abbuchung ${amount}`,
+    info: "Sie erhalten den vollen Betrag, die Gebühr wird zusätzlich abgebucht. Der Betrag wird sofort reserviert und bei Genehmigung von Ihrem Kontostand abgebucht. Ab dem Tag des Antrags erhält er keine Rendite mehr; die Auszahlung erfolgt innerhalb von 7 Tagen. Wird der Antrag abgelehnt, wird die Reservierung aufgehoben.",
+    success: (reference: string) =>
+      `Auszahlung beantragt. Der Betrag ist bis zur Genehmigung reserviert. Referenz: ${reference}`,
+    debited: (amount: string) => `${amount} inkl. Gebühr`,
     historyTitle: "Ihre Auszahlungsanträge",
     empty: "Sie haben noch keine Auszahlungen beantragt.",
     switchLabel: "Auszahlen",
@@ -255,9 +322,9 @@ export const de = {
     debitLabel: "Abbuchung gesamt",
     payoutLabel: "Auszahlung",
     payoutValue: (days: number) => `binnen ${days} Tagen`,
-    newBalance: "Neuer Kontostand",
+    newBalance: "Kontostand nach Genehmigung",
     submitAmount: (amount: string) => `Auszahlung beantragen (${amount})`,
-    ledgerNote: "Wird unveränderlich im Journal gebucht",
+    ledgerNote: "Nach der Genehmigung unveränderlich im Journal gebucht",
   },
 
   depositStatus: {
@@ -320,18 +387,26 @@ export const de = {
 
     depositsTitle: "Einzahlungen abgleichen",
     depositsSubtitle:
-      "Gleichen Sie gebuchte Einzahlungen mit den Bankeingängen ab. Stornierte Einzahlungen werden automatisch zurückgebucht.",
+      "Gleichen Sie Einzahlungen mit den Bankeingängen ab. Erst der Abgleich schreibt den Betrag dem Anleger gut; stornierte Einzahlungen werden nie gutgeschrieben.",
     depositsEmpty: "Keine Einzahlungen in dieser Ansicht.",
 
     withdrawalsTitle: "Auszahlungen prüfen",
     withdrawalsSubtitle:
-      "Genehmigen Sie Auszahlungen nach erfolgter Überweisung. Abgelehnte Anträge werden dem Anleger automatisch zurückgebucht.",
+      "Genehmigen Sie Auszahlungen nach erfolgter Überweisung; erst die Genehmigung bucht den Betrag vom Kontostand ab. Eine Ablehnung gibt den reservierten Betrag wieder frei.",
     withdrawalsEmpty: "Keine Auszahlungen in dieser Ansicht.",
 
     investorsTitle: "Anleger",
     investorsSubtitle:
-      "Alle Anleger und ihre Kontostände. Öffnen Sie einen Anleger, um Daten zu ändern oder das Konto zu deaktivieren.",
+      "Alle Anleger mit Kontostand und den Zahlen des gewählten Monats. „Ansehen“ zeigt alles zu einem Anleger.",
     newInvestor: "Neuer Anleger",
+    investorActions: {
+      view: "Ansehen",
+      viewInvestor: (name: string) => `${name} ansehen`,
+      edit: "Bearbeiten",
+      editInvestor: (name: string) => `${name} bearbeiten`,
+      deactivateInvestor: (name: string) => `${name} deaktivieren`,
+      activateInvestor: (name: string) => `${name} aktivieren`,
+    },
     investorsEmpty: "Keine Anleger gefunden.",
     searchLabel: "Anleger suchen",
     searchPlaceholder: "Name, E-Mail oder Anleger-ID",
@@ -355,6 +430,8 @@ export const de = {
       `${count === 1 ? "1 Auszahlung" : `${count} Auszahlungen`} bis zum Monatsende ${count === 1 ? "ist" : "sind"} noch nicht entschieden und ${count === 1 ? "wird" : "werden"} als ausgezahlt gerechnet. Wird eine nach dem Verbuchen abgelehnt, bleibt dieser Monat unverändert – entscheiden Sie offene Auszahlungen daher möglichst vorher.`,
     returnsTotal: "Summe",
     returnsCapped: "Verlust auf den Kontostand begrenzt",
+    returnsPausedDays: (days: number) =>
+      `Deaktiviert: ${days === 1 ? "1 Tag" : `${days} Tage`} ohne Rendite und Verlust`,
     returnsBookButton: (month: string) => `Rendite für ${month} verbuchen`,
     returnsBookPending: "Wird verbucht …",
     returnsBookHint:
@@ -370,6 +447,7 @@ export const de = {
       "Auszahlungen rentieren bis zum Vortag des Antrags (Antrag am 20. → 19 Tage im Monat).",
       "Verbuchte Renditen rentieren ab dem Folgemonat mit.",
       "Stornierte Einzahlungen und abgelehnte Auszahlungen zählen, als hätte es sie nie gegeben – sofern sie vor dem Verbuchen des Monats entschieden wurden.",
+      "Deaktivierte Anleger erhalten weder Rendite noch Verluste: ab dem Tag der Deaktivierung bis zum Vortag der erneuten Aktivierung.",
     ],
 
     reportsTitle: "Berichte",
@@ -399,6 +477,9 @@ export const de = {
         description: "Aktueller Kontostand aller Anleger (Stichtag: heute).",
         fileName: "kontostaende",
       },
+      // Exported from the investors pages, listed here for the activity log.
+      investorStatements: { title: "Monatsübersicht aller Anleger", fileName: "anleger-monatsuebersicht" },
+      investorStatement: { title: "Monatsübersicht eines Anlegers", fileName: "monatsuebersicht" },
     },
 
     activityTitle: "Aktivitätsprotokoll",
@@ -419,10 +500,10 @@ export const de = {
       noteLabel: "Notiz",
       receivedOnLabel: "Zahlungseingang am",
       processing: "Wird verarbeitet …",
-      depositReconciled: "Einzahlung als abgeglichen markiert.",
-      depositRejected: "Einzahlung storniert und zurückgebucht.",
-      withdrawalApproved: "Auszahlung genehmigt.",
-      withdrawalRejected: "Auszahlung abgelehnt, der Betrag wurde zurückgebucht.",
+      depositReconciled: "Einzahlung abgeglichen und gutgeschrieben.",
+      depositRejected: "Einzahlung storniert.",
+      withdrawalApproved: "Auszahlung genehmigt und abgebucht.",
+      withdrawalRejected: "Auszahlung abgelehnt, der reservierte Betrag ist wieder frei.",
     },
     netMovement: "Bewegung 24 h",
     entriesInWindow: (count: number) => (count === 1 ? "1 Buchung" : `${count} Buchungen`),
@@ -444,9 +525,68 @@ export const de = {
     mismatchCount: (count: number) => `${count} abweichend`,
     zeroBalanceAccounts: "Konten ohne Guthaben",
     integrityNote: "Bei jedem Laden wird jeder Kontostand mit der Summe seiner Journalbuchungen verglichen.",
+    investorMonth: {
+      label: "Monat",
+      hint: "Beträge nach Gebühren · offene Anträge sind markiert",
+      investmentOn: (month: string) => `Anlage am 1. ${month}`,
+      returnFor: (month: string) => `Rendite ${month}`,
+      miscFor: (month: string) => `Sonstiges ${month}`,
+      pending: "offen",
+      miscTitle: (month: string) => `Sonstiges ${month}`,
+      miscDescription: (name: string) =>
+        `${name} · Ein- und Auszahlungen nach Gebühren, neueste zuerst. Offene Anträge zählen erst nach der Entscheidung.`,
+      showMisc: (name: string, month: string) => `Alle Ein- und Auszahlungen von ${name} im ${month} anzeigen`,
+      more: (count: number) => `+${count}`,
+      bookedTotal: "Summe gebucht",
+      pendingTotal: "Offen, noch nicht gezählt",
+    },
+    queueGroup: {
+      title: (name: string) => `Offene Anträge von ${name}`,
+      description: (count: number) => `${count} Anträge, neueste zuerst. Jeder Antrag wird einzeln entschieden.`,
+      showAll: (name: string, count: number) => `Alle ${count} offenen Anträge von ${name} anzeigen`,
+      showAllShort: (count: number) => `Alle ${count} anzeigen`,
+      latest: (dateTime: string) => `Neuester Antrag: ${dateTime}`,
+      deposits: (count: number) => (count === 1 ? "1 Einzahlung" : `${count} Einzahlungen`),
+      withdrawals: (count: number) => (count === 1 ? "1 Auszahlung" : `${count} Auszahlungen`),
+    },
+    investorExport: {
+      button: "CSV",
+      titleAll: "Monatsübersicht als CSV",
+      descriptionAll:
+        "Eine Zeile je Anleger des aktuellen Filters, je Monat Anlage am 1., Rendite und Sonstiges. Beträge nach Gebühren.",
+      titleOne: (name: string) => `Monatsübersicht von ${name} als CSV`,
+      descriptionOne: "Eine Zeile je Monat: Anlage am 1., Rendite, Ein- und Auszahlungen. Beträge nach Gebühren.",
+      from: "Von",
+      to: "Bis",
+      download: "CSV herunterladen",
+      rowLabel: (name: string) => `Monatsübersicht von ${name} als CSV herunterladen`,
+      rowTitle: "CSV herunterladen (alle Monate)",
+    },
+    investorView: {
+      statementTitle: "Monatsübersicht",
+      statementSubtitle:
+        "Anlage am Monatsanfang, Rendite des Monats sowie Ein- und Auszahlungen. Beträge nach Gebühren; die Rendite zählt ab dem 1. des Folgemonats.",
+      investment: "Anlage am 1.",
+      return: "Rendite",
+      misc: "Sonstiges",
+      statementEmpty: "Noch keine Ein- oder Auszahlungen.",
+      totalReturns: "Renditen gesamt",
+      depositsTitle: "Einzahlungen",
+      withdrawalsTitle: "Auszahlungen",
+      ledgerTitle: "Buchungen",
+      activityTitle: "Aktivitätsprotokoll",
+      activitySubtitle:
+        "Was der Anleger selbst getan hat: Registrierung, An- und Abmeldungen, Ein- und Auszahlungsanträge, Passwortänderungen.",
+      newestOf: (shown: number, total: number) => `Die neuesten ${shown} von ${total}`,
+      depositsEmpty: "Keine Einzahlungen.",
+      withdrawalsEmpty: "Keine Auszahlungen.",
+      activityEmpty: "Keine Einträge.",
+    },
     investorDetail: {
       factsTitle: "Übersicht",
       backLink: "Alle Anleger",
+      backToInvestor: "Zurück zum Anleger",
+      editTitle: (name: string) => `${name} bearbeiten`,
       profileTitle: "Name & E-Mail",
       passwordTitle: "Neues Passwort festlegen",
       passwordDescription: "Geben Sie ein neues Passwort ein. Das bisherige Passwort wird nicht benötigt.",
@@ -463,17 +603,21 @@ export const de = {
       deactivatedOn: (date: string) => `Deaktiviert am ${date}`,
       deactivateTitle: "Konto deaktivieren",
       deactivateDescription:
-        "Der Anleger wird überall abgemeldet und kann sich nicht mehr anmelden. Es wird nichts gelöscht: Buchungen, Kontostand und Protokoll bleiben erhalten, und das Konto lässt sich jederzeit wieder aktivieren.",
+        "Der Anleger wird überall abgemeldet und kann sich nicht mehr anmelden. Ab dem Tag der Deaktivierung erhält das Guthaben weder Rendite noch Verluste. Es wird nichts gelöscht: Buchungen, Kontostand und Protokoll bleiben erhalten, und das Konto lässt sich jederzeit wieder aktivieren.",
       balanceRemains: (amount: string) =>
-        `Im Konto liegen noch ${amount}. Das Guthaben erhält weiter die Monatsrendite, kann aber erst nach der Aktivierung ausgezahlt werden.`,
+        `Im Konto liegen noch ${amount}. Auszahlen lässt sich das Guthaben erst nach der Aktivierung.`,
       openRequestsRemain: (count: number) =>
         count === 1
           ? "1 offener Antrag kann weiterhin bearbeitet werden."
           : `${count} offene Anträge können weiterhin bearbeitet werden.`,
       deactivate: "Deaktivieren",
+      confirmDeactivateTitle: "Anleger deaktivieren?",
+      confirmDeactivateBody: (name: string) =>
+        `${name} wird überall abgemeldet und kann sich erst wieder anmelden, wenn das Konto aktiviert wird. Ab heute erhält das Guthaben weder Rendite noch Verluste. Kontostand, Buchungen und offene Anträge bleiben erhalten.`,
+      cancel: "Abbrechen",
       activateTitle: "Konto aktivieren",
       activateDescription: (date: string) =>
-        `Deaktiviert seit ${date}. Nach der Aktivierung ist die Anmeldung mit dem bisherigen Passwort wieder möglich.`,
+        `Deaktiviert seit ${date}. Nach der Aktivierung ist die Anmeldung mit dem bisherigen Passwort wieder möglich, und das Guthaben erhält ab diesem Tag wieder Rendite.`,
       activate: "Aktivieren",
       deactivated: "Anleger deaktiviert und überall abgemeldet.",
       activated: "Anleger aktiviert. Die Anmeldung mit dem bisherigen Passwort ist wieder möglich.",
@@ -488,6 +632,46 @@ export const de = {
       submit: "Anleger anlegen",
       submitPending: "Wird angelegt …",
     },
+  },
+
+  notifications: {
+    title: "Benachrichtigungen",
+    open: (count: number) => (count === 0 ? "Benachrichtigungen" : `Benachrichtigungen, ${count} neu`),
+    empty: "Noch keine Ereignisse. Neue Auszahlungsanträge, Einzahlungen und Registrierungen erscheinen hier sofort.",
+    live: "Live",
+    connecting: "Verbinde …",
+    offline: "Getrennt – Seite neu laden",
+    view: "Ansehen",
+    dismiss: "Schließen",
+    someone: "Ein Anleger",
+    types: {
+      "withdrawal.requested": "Auszahlungsantrag",
+      "deposit.created": "Neue Einzahlung",
+      "auth.registered": "Neuer Anleger",
+    } satisfies Record<AdminNotificationType, string>,
+    withdrawalRequested: (name: string, amount: string) => `${name} beantragt eine Auszahlung über ${amount}.`,
+    depositCreated: (name: string, amount: string) => `${name} meldet eine Einzahlung über ${amount}.`,
+    investorRegistered: (name: string) => `${name} hat sich registriert.`,
+  },
+
+  liveUpdates: {
+    view: "Ansehen",
+    dismiss: "Schließen",
+    types: {
+      "deposit.reconciled": "Einzahlung gutgeschrieben",
+      "deposit.rejected": "Einzahlung storniert",
+      "withdrawal.approved": "Auszahlung genehmigt",
+      "withdrawal.rejected": "Auszahlung abgelehnt",
+      "returns.booked": "Monatsrendite verbucht",
+    } satisfies Record<InvestorNotificationType, string>,
+    depositReconciled: (amount: string, reference: string) =>
+      `Ihre Einzahlung ${reference} ist abgeglichen: ${amount} gutgeschrieben.`,
+    depositRejected: (reference: string) => `Ihre Einzahlung ${reference} wurde storniert.`,
+    withdrawalApproved: (amount: string, reference: string) =>
+      `Ihre Auszahlung ${reference} über ${amount} wurde genehmigt und wird überwiesen.`,
+    withdrawalRejected: (reference: string) =>
+      `Ihre Auszahlung ${reference} wurde abgelehnt; der reservierte Betrag ist wieder verfügbar.`,
+    returnsBooked: (month: string, amount: string) => `Ihre Rendite für ${month}: ${amount}.`,
   },
 
   profile: {
@@ -561,6 +745,16 @@ export const de = {
     reviewedAt: "Bearbeitet am",
     note: "Notiz",
     registeredAt: "Registriert am",
+    month: "Monat",
+    investmentOn: (month: string) => `Anlage am 1. ${month} (EUR)`,
+    returnFor: (month: string) => `Rendite ${month} (EUR)`,
+    miscFor: (month: string) => `Sonstiges ${month}`,
+    investment: "Anlage am 1. (EUR)",
+    monthReturn: "Rendite (EUR)",
+    deposits: "Einzahlungen (EUR)",
+    withdrawals: "Auszahlungen (EUR)",
+    misc: "Sonstiges",
+    pending: "offen",
   },
 
   amountField: {
@@ -576,6 +770,7 @@ export const de = {
     emptyValue: "–",
     quoted: (value: string) => `„${value}“`,
     showingRange: (from: number, to: number, total: number) => `Zeige ${from}–${to} von ${total}`,
+    close: "Schließen",
   },
 
   errors: {

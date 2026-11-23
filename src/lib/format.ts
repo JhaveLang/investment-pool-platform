@@ -25,6 +25,10 @@ export type Formatter = {
   calendarDate: (isoDate: string) => string;
   /** Month string "2026-10" → "Oktober 2026" (de) / "October 2026" (en) */
   month: (isoMonth: string) => string;
+  /** Month string "2026-10" → "Okt. 2026" (de) / "Oct 2026" (en), for table headers */
+  monthShort: (isoMonth: string) => string;
+  /** Calendar date string "2026-09-26" → "26.09." (de) / "26 Sep" (en), for compact lists */
+  dayMonth: (isoDate: string) => string;
   /** Signed rate in parts per million: 23500 → "+2,35 %" (de) / "+2.35%" (en) */
   rate: (ratePpm: number) => string;
   /** Plain percentage: 2 → "2 %" (de) / "2%" (en) */
@@ -71,6 +75,12 @@ function createFormatter(locale: Locale): Formatter {
   // Calendar values carry no time of day; formatting them in UTC keeps the date unchanged.
   const calendarDateFormat = new Intl.DateTimeFormat(intlLocale, { dateStyle: "medium", timeZone: "UTC" });
   const monthFormat = new Intl.DateTimeFormat(intlLocale, { month: "long", year: "numeric", timeZone: "UTC" });
+  const monthShortFormat = new Intl.DateTimeFormat(intlLocale, { month: "short", year: "numeric", timeZone: "UTC" });
+  const dayMonthFormat = new Intl.DateTimeFormat(intlLocale, {
+    day: "2-digit",
+    month: locale === "de" ? "2-digit" : "short",
+    timeZone: "UTC",
+  });
   const rateFormat = new Intl.NumberFormat(intlLocale, {
     style: "percent",
     minimumFractionDigits: 2,
@@ -91,6 +101,8 @@ function createFormatter(locale: Locale): Formatter {
     exportDateTime: (value) => exportDateTimeFormat.format(value),
     calendarDate: (isoDate) => calendarDateFormat.format(calendarToUtcDate(isoDate)),
     month: (isoMonth) => monthFormat.format(calendarToUtcDate(isoMonth)),
+    monthShort: (isoMonth) => monthShortFormat.format(calendarToUtcDate(isoMonth)),
+    dayMonth: (isoDate) => dayMonthFormat.format(calendarToUtcDate(isoDate)),
     rate: (ratePpm) => rateFormat.format(ratePpm / 1_000_000),
     percent: (value) => percentFormat.format(value / 100),
   };

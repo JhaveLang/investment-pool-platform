@@ -5,6 +5,7 @@ import { BalanceHero } from "@/components/dashboard/balance-hero";
 import { Meter } from "@/components/dashboard/meter";
 import { MoveMoneyPreview } from "@/components/dashboard/move-money-preview";
 import { OpenRequests } from "@/components/dashboard/open-requests";
+import { WelcomeDialog } from "@/components/dashboard/welcome-dialog";
 import { GroupFilter } from "@/components/transactions/group-filter";
 import { TransactionTable } from "@/components/transactions/transaction-table";
 import { buttonStyles } from "@/components/ui/button";
@@ -15,6 +16,8 @@ import { DeltaChip, StatCard } from "@/components/ui/stat-card";
 import { getI18n, pageMetadata } from "@/i18n/server";
 import { addDays, todayIsoDate } from "@/lib/calendar";
 import { formatIsoDate } from "@/lib/format";
+import { WELCOME_PARAM } from "@/lib/onboarding";
+import { firstParam } from "@/lib/pagination";
 import { MINIMUM_TERM_DAYS, minimumTermEnd, PAYOUT_DEADLINE_DAYS } from "@/lib/returns";
 import { requireInvestor } from "@/server/auth/guards";
 import { getLatestReturnRate, listMonthlyReturns, loadBalanceHistory } from "@/server/queries/charts";
@@ -25,7 +28,7 @@ const RECENT_ENTRY_COUNT = 6;
 
 export const generateMetadata = pageMetadata((messages) => messages.dashboard.title);
 
-export default async function DashboardPage() {
+export default async function DashboardPage({ searchParams }: PageProps<"/dashboard">) {
   const user = await requireInvestor();
   const { messages, format } = await getI18n();
   const text = messages.dashboard;
@@ -40,6 +43,8 @@ export default async function DashboardPage() {
       listRecentDeposits(user.id),
       listRecentWithdrawals(user.id),
     ]);
+  // The welcome popup after signing up: only while no deposit has been started, so it never shows twice by mistake.
+  const showWelcome = firstParam((await searchParams)[WELCOME_PARAM]) === "1" && recentDeposits.length === 0;
   const renderedAt = new Date();
   const today = todayIsoDate();
 
@@ -68,6 +73,7 @@ export default async function DashboardPage() {
   return (
     <>
       <AutoRefresh />
+      {showWelcome ? <WelcomeDialog name={user.fullName} balanceCents={overview.balanceCents} /> : null}
       <h1 className="sr-only lg:hidden">{text.greeting(user.fullName)}</h1>
 
       {/* Desktop header strip */}

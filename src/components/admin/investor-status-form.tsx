@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { ActionStateAlert } from "@/components/ui/alert";
+import { ConfirmDialog, useConfirmation } from "@/components/ui/confirm-dialog";
 import { inputStyles, labelStyles } from "@/components/ui/form-field";
 import { Icon } from "@/components/ui/icon";
 import { SubmitButton } from "@/components/ui/submit-button";
@@ -13,19 +14,28 @@ type InvestorStatusFormProps = {
   action: (previousState: ActionState, formData: FormData) => Promise<ActionState>;
   /** The investor's current status; the button switches to the other one. */
   active: boolean;
+  investorName: string;
 };
 
-/** Deactivate or activate button with an optional note for the activity log. */
-export function InvestorStatusForm({ action, active }: InvestorStatusFormProps) {
+/** Deactivate or activate button with an optional note for the activity log; deactivating asks for confirmation. */
+export function InvestorStatusForm({ action, active, investorName }: InvestorStatusFormProps) {
   const messages = useMessages();
   const text = messages.admin.investorDetail;
   const [state, formAction] = useActionState(action, idleActionState);
+  const { formRef, dialogRef, onSubmit: holdForConfirmation, confirm } = useConfirmation(active);
 
   return (
     <div className="space-y-5">
       {/* Outside the keyed form, so the outcome stays visible once the card flips to the other status. */}
       <ActionStateAlert state={state} />
-      <form key={active ? "active" : "deactivated"} action={formAction} noValidate className="space-y-5">
+      <form
+        key={active ? "active" : "deactivated"}
+        ref={formRef}
+        action={formAction}
+        onSubmit={holdForConfirmation}
+        noValidate
+        className="space-y-5"
+      >
         <input type="hidden" name="status" value={active ? "deactivated" : "active"} />
         <div>
           <label htmlFor="field-status-note" className={labelStyles}>
@@ -45,6 +55,15 @@ export function InvestorStatusForm({ action, active }: InvestorStatusFormProps) 
             {active ? text.deactivate : text.activate}
           </SubmitButton>
         </div>
+        <ConfirmDialog
+          dialogRef={dialogRef}
+          title={text.confirmDeactivateTitle}
+          confirmLabel={text.deactivate}
+          cancelLabel={text.cancel}
+          onConfirm={confirm}
+        >
+          {text.confirmDeactivateBody(investorName)}
+        </ConfirmDialog>
       </form>
     </div>
   );

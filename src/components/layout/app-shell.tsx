@@ -18,11 +18,13 @@ type AppShellProps = {
   user: SessionUser;
   navItems: NavItem[];
   homeHref: string;
+  /** Extra controls for both top bars, e.g. the admin's notification bell. */
+  topBarActions?: ReactNode;
   children: ReactNode;
 };
 
 /** Sidebar and top bar from the `lg` breakpoint; below it, a compact top bar and a bottom dock. */
-export async function AppShell({ user, navItems, homeHref, children }: AppShellProps) {
+export async function AppShell({ user, navItems, homeHref, topBarActions, children }: AppShellProps) {
   const { messages } = await getI18n();
   const isAdmin = user.role === "admin";
   const roleLabel = isAdmin ? messages.nav.roleAdmin : messages.nav.roleInvestor;
@@ -79,6 +81,7 @@ export async function AppShell({ user, navItems, homeHref, children }: AppShellP
             <span />
           )}
           <div className="flex items-center gap-4">
+            {topBarActions}
             <LocaleSwitcher />
             <UserChip user={user} />
           </div>
@@ -98,24 +101,27 @@ export async function AppShell({ user, navItems, homeHref, children }: AppShellP
               </span>
             </span>
           </a>
-          <AccountMenu avatar={<Avatar user={user} />}>
-            <div className="border-b border-line px-1 pb-3">
-              <p className="truncate text-sm font-semibold text-fg">{user.fullName}</p>
-              <p className="truncate text-xs text-subtle">{user.email}</p>
-            </div>
-            <Link
-              href={profilePathForRole(user.role)}
-              className="mt-1 flex w-full items-center gap-3 rounded-lg px-4 py-2.5 text-[13px] font-medium text-muted transition-colors hover:bg-overlay hover:text-fg"
-            >
-              <Icon name="users" className="size-5" />
-              {messages.nav.profile}
-            </Link>
-            <div className="flex items-center justify-between gap-3 px-1 py-3">
-              <span className="label-caps text-muted">{messages.nav.language}</span>
-              <LocaleSwitcher />
-            </div>
-            {logoutButton}
-          </AccountMenu>
+          <div className="flex shrink-0 items-center gap-1">
+            {topBarActions}
+            <AccountMenu avatar={<Avatar user={user} />}>
+              <div className="border-b border-line px-1 pb-3">
+                <p className="truncate text-sm font-semibold text-fg">{user.fullName}</p>
+                <p className="truncate text-xs text-subtle">{user.email}</p>
+              </div>
+              <Link
+                href={profilePathForRole(user.role)}
+                className="mt-1 flex w-full items-center gap-3 rounded-lg px-4 py-2.5 text-[13px] font-medium text-muted transition-colors hover:bg-overlay hover:text-fg"
+              >
+                <Icon name="users" className="size-5" />
+                {messages.nav.profile}
+              </Link>
+              <div className="flex items-center justify-between gap-3 px-1 py-3">
+                <span className="label-caps text-muted">{messages.nav.language}</span>
+                <LocaleSwitcher />
+              </div>
+              {logoutButton}
+            </AccountMenu>
+          </div>
         </header>
 
         <main className="w-full flex-1 px-4 pt-4 pb-[calc(env(safe-area-inset-bottom)+6rem)] sm:px-6 lg:px-8 lg:pt-6 lg:pb-12">

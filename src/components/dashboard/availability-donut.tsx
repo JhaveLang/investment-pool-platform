@@ -5,7 +5,10 @@ import type { AccountOverview } from "@/server/queries/investor";
 const RADIUS = 42;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
-/** The balance split into withdrawable and locked capital, as a ring with a legend. */
+/**
+ * The balance split into withdrawable and locked capital, as a ring with a legend. Payouts reserved for pending
+ * withdrawals are the ring's empty part.
+ */
 export async function AvailabilityDonut({ overview }: { overview: AccountOverview }) {
   const { messages, format } = await getI18n();
   const text = messages.dashboard;
@@ -19,6 +22,16 @@ export async function AvailabilityDonut({ overview }: { overview: AccountOvervie
   const rows = [
     { label: text.available, cents: overview.availableCents, share: freeShare, swatch: "bg-chart-free" },
     { label: text.locked, cents: overview.lockedCents, share: lockedShare, swatch: "bg-chart-locked" },
+    ...(overview.reservedCents > 0
+      ? [
+          {
+            label: text.reserved,
+            cents: overview.reservedCents,
+            share: total > 0 ? overview.reservedCents / total : 0,
+            swatch: "bg-overlay ring-1 ring-line-strong",
+          },
+        ]
+      : []),
   ];
 
   return (

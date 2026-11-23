@@ -1,25 +1,16 @@
-import { NextResponse, type NextRequest } from "next/server";
-import { getI18n } from "@/i18n/server";
+import type { NextRequest } from "next/server";
 import { getSchemas } from "@/lib/validation";
-import { getCurrentUser } from "@/server/auth/session";
+import { authorizeAdminDownload, csvResponse, textResponse } from "@/server/csv-download";
 import { getClientIp } from "@/server/request";
 import { exportReport, isReportType } from "@/server/services/reports";
 
-const textResponse = (body: string, status: number) =>
-  new Response(body, { status, headers: { "Content-Type": "text/plain; charset=utf-8" } });
-
 /** GET /api/reports/{transactions|deposits|withdrawals|balances}?from=YYYY-MM-DD&to=YYYY-MM-DD */
 export async function GET(request: NextRequest, context: RouteContext<"/api/reports/[reportType]">) {
-  const user = await getCurrentUser();
-  if (!user) {
-    // Expired session: send the admin back to the login page instead of an error.
-    return NextResponse.redirect(new URL("/login", request.url));
+  const authorized = await authorizeAdminDownload(request);
+  if ("response" in authorized) {
+    return authorized.response;
   }
-
-  const i18n = await getI18n();
-  if (user.role !== "admin") {
-    return textResponse(i18n.messages.errors.forbidden, 403);
-  }
+  const { user, i18n } = authorized;
 
   const { reportType } = await context.params;
   if (!isReportType(reportType)) {
@@ -43,11 +34,5 @@ export async function GET(request: NextRequest, context: RouteContext<"/api/repo
     ipAddress: await getClientIp(),
   });
 
-  return new Response(report.csv, {
-    headers: {
-      "Content-Type": "text/csv; charset=utf-8",
-      "Content-Disposition": `attachment; filename="${report.fileName}"`,
-      "Cache-Control": "no-store",
-    },
-  });
+  return csvResponse(report);
 }

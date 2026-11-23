@@ -1,11 +1,11 @@
 import "server-only";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { todayIsoDate } from "@/lib/calendar";
 import { DomainError } from "@/lib/errors";
 import { withdrawalFeeCents } from "@/lib/fees";
 import { getDb, type DbTransaction } from "@/server/db/client";
 import { withdrawals, type Withdrawal, type WithdrawalStatus } from "@/server/db/schema";
-import { loadLockedCapital } from "@/server/queries/accrual";
+import { loadLockedCapital, loadReservedPayoutCents } from "@/server/queries/accrual";
 import { recordAudit } from "./audit";
 import { generateReference, lockAccountForUser, postLedgerEntry } from "./ledger";
 import type { ReviewInput } from "./types";
@@ -29,10 +29,10 @@ function debitedCents(withdrawal: Withdrawal): number {
 }
 
 /**
- * Requests a payout: the payout and its fee are debited immediately (so they can't be
- * withdrawn twice) and the request waits for admin approval. Rejection credits both back.
- * Capital still inside the 60-day minimum term can't be withdrawn; returns always can.
- * The withdrawn amount stops earning returns on the day of the request.
+ * Requests a payout. Nothing is debited yet: payout and fee are reserved (they can't be
+ * requested twice) until an admin approves the request, which debits them, or rejects it,
+ * which frees them. Capital still inside the 60-day minimum term can't be withdrawn; returns
+ * always can. The requested amount stops earning returns on the day of the request.
  */
 export async function requestWithdrawal(input: RequestWithdrawalInput): Promise<Withdrawal> {
   return getDb().transaction(async (tx) => {
@@ -49,12 +49,13 @@ export async function requestWithdrawal(input: RequestWithdrawalInput): Promise<
     const { destination } = input;
     const feeCents = withdrawalFeeCents(input.amountCents, destination.method);
     const totalDebitCents = input.amountCents + feeCents;
-    if (totalDebitCents > account.balanceCents) {
+    // The account row is locked, so no concurrent booking can change the balance, the lock or the reservations.
+    const reservedCents = await loadReservedPayoutCents(tx, account.id);
+    if (totalDebitCents > account.balanceCents - reservedCents) {
       throw new DomainError("INSUFFICIENT_FUNDS");
     }
-    // The account row is locked, so no concurrent booking can change the balance or the lock.
     const { lockedCents } = await loadLockedCapital(tx, account.id, todayIsoDate());
-    if (totalDebitCents > account.balanceCents - lockedCents) {
+    if (totalDebitCents > account.balanceCents - lockedCents - reservedCents) {
       throw new DomainError("MINIMUM_TERM");
     }
 
@@ -71,23 +72,6 @@ export async function requestWithdrawal(input: RequestWithdrawalInput): Promise<
         reference: generateReference("AZ"),
       })
       .returning();
-
-    await postLedgerEntry(tx, {
-      accountId: account.id,
-      entryType: "withdrawal",
-      amountCents: -withdrawal.amountCents,
-      withdrawalId: withdrawal.id,
-      createdByUserId: input.userId,
-    });
-    if (withdrawal.feeCents > 0) {
-      await postLedgerEntry(tx, {
-        accountId: account.id,
-        entryType: "withdrawal_fee",
-        amountCents: -withdrawal.feeCents,
-        withdrawalId: withdrawal.id,
-        createdByUserId: input.userId,
-      });
-    }
 
     await recordAudit(tx, {
       actorUserId: input.userId,
@@ -107,10 +91,41 @@ export async function requestWithdrawal(input: RequestWithdrawalInput): Promise<
   });
 }
 
-/** Confirms the payout was sent. The balance was already debited at request time. */
+/**
+ * Confirms the payout was sent and debits payout and fee (two ledger entries, so the fee stays
+ * visible). Requests made before the approval rule were debited at request time and are not
+ * debited again.
+ */
 export async function approveWithdrawal(input: ReviewInput): Promise<void> {
   await getDb().transaction(async (tx) => {
+    const [pendingWithdrawal] = await tx
+      .select({ debitedAt: withdrawals.debitedAt })
+      .from(withdrawals)
+      .where(and(eq(withdrawals.id, input.recordId), eq(withdrawals.status, "pending")))
+      .for("update");
+    if (!pendingWithdrawal) {
+      throw new DomainError("ALREADY_PROCESSED");
+    }
+
     const withdrawal = await finalizePendingWithdrawal(tx, input, "approved");
+    if (pendingWithdrawal.debitedAt === null) {
+      await postLedgerEntry(tx, {
+        accountId: withdrawal.accountId,
+        entryType: "withdrawal",
+        amountCents: -withdrawal.amountCents,
+        withdrawalId: withdrawal.id,
+        createdByUserId: input.reviewerId,
+      });
+      if (withdrawal.feeCents > 0) {
+        await postLedgerEntry(tx, {
+          accountId: withdrawal.accountId,
+          entryType: "withdrawal_fee",
+          amountCents: -withdrawal.feeCents,
+          withdrawalId: withdrawal.id,
+          createdByUserId: input.reviewerId,
+        });
+      }
+    }
     await recordAudit(tx, {
       actorUserId: input.reviewerId,
       action: "withdrawal.approved",
@@ -122,18 +137,23 @@ export async function approveWithdrawal(input: ReviewInput): Promise<void> {
   });
 }
 
-/** Declines the payout and credits the reserved amount (payout plus fee) back to the investor. */
+/**
+ * Declines the payout; the reserved amount is free again and nothing is booked. A request made
+ * before the approval rule was already debited, so payout and fee are credited back.
+ */
 export async function rejectWithdrawal(input: ReviewInput): Promise<void> {
   await getDb().transaction(async (tx) => {
     const withdrawal = await finalizePendingWithdrawal(tx, input, "rejected");
 
-    await postLedgerEntry(tx, {
-      accountId: withdrawal.accountId,
-      entryType: "withdrawal_reversal",
-      amountCents: debitedCents(withdrawal),
-      withdrawalId: withdrawal.id,
-      createdByUserId: input.reviewerId,
-    });
+    if (withdrawal.debitedAt !== null) {
+      await postLedgerEntry(tx, {
+        accountId: withdrawal.accountId,
+        entryType: "withdrawal_reversal",
+        amountCents: debitedCents(withdrawal),
+        withdrawalId: withdrawal.id,
+        createdByUserId: input.reviewerId,
+      });
+    }
 
     await recordAudit(tx, {
       actorUserId: input.reviewerId,
@@ -146,7 +166,11 @@ export async function rejectWithdrawal(input: ReviewInput): Promise<void> {
   });
 }
 
-/** The `status = 'pending'` condition makes processing a withdrawal twice impossible. */
+/**
+ * The `status = 'pending'` condition makes processing a withdrawal twice impossible. Approving
+ * stamps `debited_at` in the same statement (the database requires it for approved withdrawals);
+ * an earlier stamp from before the approval rule is kept.
+ */
 async function finalizePendingWithdrawal(
   tx: DbTransaction,
   input: ReviewInput,
@@ -156,6 +180,7 @@ async function finalizePendingWithdrawal(
     .update(withdrawals)
     .set({
       status,
+      ...(status === "approved" ? { debitedAt: sql`coalesce(${withdrawals.debitedAt}, now())` } : {}),
       reviewedAt: new Date(),
       reviewedByUserId: input.reviewerId,
       reviewNote: input.note ?? null,
