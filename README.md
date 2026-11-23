@@ -274,6 +274,7 @@ src/
 │   ├── queries/            Read-only queries for pages and exports
 │   └── rate-limit.ts, redis.ts, env.ts, notifications.ts (live admin events)
 └── proxy.ts                Optimistic auth redirect
+deploy/                     setup.sh (one-command server setup with HTTPS), update.sh
 drizzle/                    SQL migrations (incl. append-only triggers)
 scripts/seed.ts             Admin seed
 ```
@@ -293,6 +294,31 @@ Conventions: descriptive camelCase names (single-letter identifiers are rejected
 ---
 
 ## Production deployment
+
+### Quickest: one command on an Ubuntu or Debian server (no domain needed)
+
+On a fresh server with at least 2 GB of memory (e.g. Hetzner CX22 or a DigitalOcean droplet), with ports 80 and 443 open:
+
+```bash
+git clone https://github.com/JhaveLang/investment-pool-platform.git && cd investment-pool-platform
+sudo bash deploy/setup.sh
+```
+
+If the repository is private, `git clone` asks for a GitHub username and a personal access token (GitHub › Settings › Developer settings › Personal access tokens, read access to the repository is enough).
+
+`deploy/setup.sh` does the whole of Option A below:
+- installs Docker and [Caddy](https://caddyserver.com), and adds swap on small servers;
+- writes `.env` with generated passwords (it asks for the admin email);
+- builds and starts the stack and, if you say yes, fills the empty pool with demo data;
+- configures HTTPS.
+
+Without a domain it serves the site as `https://<server-ip-with-dashes>.sslip.io` (sslip.io turns an IP address into a public host name, free, no sign-up). Set `SITE_HOST=pool.example.com` to use your own domain instead.
+
+The whole site sits behind a browser password prompt (user `client`) until you turn it off with `ACCESS_PASSWORD=none`, so a demo stays private and unindexed.
+
+At the end the script prints the link and every login, and saves them to `/root/investment-pool-access.txt`. Running it again is safe: passwords already in `.env` are kept.
+
+To update later: `sudo bash deploy/update.sh` (pull, rebuild, restart; migrations run automatically).
 
 ### Option A: single server with Docker Compose
 
