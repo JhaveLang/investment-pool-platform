@@ -157,3 +157,49 @@ export async function setInvestorPassword(input: SetInvestorPasswordInput): Prom
     });
   });
 }
+
+type SetInvestorStatusInput = {
+  adminId: string;
+  userId: string;
+  /** `false` deactivates the investor, `true` activates them again. */
+  active: boolean;
+  note?: string;
+  ipAddress: string | null;
+};
+
+/**
+ * Deactivating blocks sign-in and signs the investor out everywhere; activating lets them sign in again with their
+ * existing password. Balance, open requests and monthly returns are not affected either way.
+ */
+export async function setInvestorStatus(input: SetInvestorStatusInput): Promise<void> {
+  await getDb().transaction(async (tx) => {
+    const [investor] = await tx
+      .select({ fullName: users.fullName, investorCode: users.investorCode, deactivatedAt: users.deactivatedAt })
+      .from(users)
+      .where(and(eq(users.id, input.userId), eq(users.role, "investor")))
+      .for("update")
+      .limit(1);
+    if (!investor) {
+      throw new DomainError("NOT_FOUND");
+    }
+    if ((investor.deactivatedAt === null) === input.active) {
+      throw new DomainError("ALREADY_PROCESSED");
+    }
+
+    await tx
+      .update(users)
+      .set({ deactivatedAt: input.active ? null : new Date() })
+      .where(eq(users.id, input.userId));
+    if (!input.active) {
+      await tx.delete(sessions).where(eq(sessions.userId, input.userId));
+    }
+    await recordAudit(tx, {
+      actorUserId: input.adminId,
+      action: input.active ? "user.activated" : "user.deactivated",
+      entityType: "user",
+      entityId: input.userId,
+      metadata: { investorName: investor.fullName, investorCode: investor.investorCode, note: input.note },
+      ipAddress: input.ipAddress,
+    });
+  });
+}

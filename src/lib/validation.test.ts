@@ -10,6 +10,7 @@ const {
   changePasswordSchema,
   adminUpdateInvestorSchema,
   adminSetPasswordSchema,
+  adminInvestorStatusSchema,
 } = getSchemas("de");
 const IDEMPOTENCY_KEY = "3f1b6f0e-8f4f-4a39-9d1c-3c1f6c0b2a11";
 const WALLET = "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh";
@@ -199,4 +200,25 @@ describe("adminSetPasswordSchema", () => {
         }),
       ),
     ).toBe("newPasswordConfirmation"));
+});
+
+describe("adminInvestorStatusSchema", () => {
+  it("accepts both statuses and drops an empty note", () => {
+    for (const status of ["active", "deactivated"]) {
+      const result = adminInvestorStatusSchema.safeParse({ userId: IDEMPOTENCY_KEY, status, note: "  " });
+      expect(result.success && result.data).toEqual({ userId: IDEMPOTENCY_KEY, status, note: undefined });
+    }
+  });
+
+  it("rejects an unknown status", () =>
+    expect(
+      failedField(adminInvestorStatusSchema.safeParse({ userId: IDEMPOTENCY_KEY, status: "deleted", note: "" })),
+    ).toBe("status"));
+
+  it("limits the note to 500 characters", () =>
+    expect(
+      failedField(
+        adminInvestorStatusSchema.safeParse({ userId: IDEMPOTENCY_KEY, status: "deactivated", note: "x".repeat(501) }),
+      ),
+    ).toBe("note"));
 });

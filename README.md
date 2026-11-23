@@ -1,6 +1,6 @@
 # Bitcoin Magazin Pool – Investment Pool Platform
 
-A full-stack investment-pool platform. Investors register, deposit funds, request withdrawals and follow every money movement with a running balance. Admins reconcile deposits, approve withdrawals, export CSV reports and review an immutable activity log. **The user interface is German by default, with an English option** (DE | EN switch in the header and on the login page).
+A full-stack investment-pool platform. Investors register, deposit funds, request withdrawals and follow every money movement with a running balance. Admins manage investor accounts (create, edit, deactivate / activate), reconcile deposits, approve withdrawals, export CSV reports and review an immutable activity log. **The user interface is German by default, with an English option** (DE | EN switch in the header and on the login page).
 
 | Investor | Admin |
 | --- | --- |
@@ -8,8 +8,8 @@ A full-stack investment-pool platform. Investors register, deposit funds, reques
 | Dashboard with live balance, returns and withdrawable amount | Reconcile deposits with their receipt date, or cancel them |
 | Deposits by bank transfer, crypto or exchange (`1.234,56` in German, `1,234.56` in English) | Approve or reject withdrawals (with 7-day payout deadline) |
 | Withdrawals to an IBAN, a wallet or an exchange, with live fee preview | Book the monthly result for every investor, with preview |
-| Paginated ledger with resulting balance per entry | Investor list with search by name, email or investor ID |
-| Profile with account details and own password change | Investor detail page: edit name and email, set a new password |
+| Paginated ledger with resulting balance per entry | Investor list with status filter (active / deactivated) and search by name, email or investor ID |
+| Profile with account details and own password change | Create investors; investor detail page: edit name and email, set a new password, deactivate / activate |
 | | CSV reports (journal, deposits, withdrawals, balances), with investor ID |
 | | Activity log of all security- and money-relevant actions |
 | | Own profile with password change |
@@ -174,12 +174,16 @@ Safeguards when booking:
 
 ## Profile & account management
 
+Admins manage investors on **Anleger / Investors** (`/admin/investors`): create (`/admin/investors/new`), view (list and detail page), edit (name, email, password) and deactivate / activate. Investors are never deleted, because every booking and log entry must stay attached to its account.
+
 - **Investor ID:** every investor gets a unique, random ID of the shape `01GR01` (2 digits, 2 letters without I and O, 2 digits) when registering. It reveals nothing about the number of investors, never changes, and is shown on the profile, in the admin investor list (searchable), the review queues, the activity log and the CSV reports.
 - **Profile** (`/profile` for investors, `/admin/profile` for the admin): opened from the name in the top bar (on phones from the account menu). Shows ID (investors only), name, email and member-since date, and lets users change their own password. Changing it needs the current password, signs the user out on all other devices and is rate-limited to 5 attempts per 15 minutes.
 - **Name and email** can only be changed by the admin on the investor detail page (`/admin/investors/<id>`, reached from the Investors list). Investors who need a change contact the admin; there is no request workflow. A name or email change does not sign the investor out.
 - **Forgotten password:** the app sends no email. The admin sets a new password on the investor detail page; it replaces the old one at once, signs the investor out everywhere and stays valid until the investor changes it on their profile.
+- **Creating investors:** "Neuer Anleger" on the Investors list. Name, email and a starting password (same rules as registration); the investor gets an investor ID and a zero-balance account, and the admin passes the email and starting password on. Logged as `user.created`.
+- **Deactivate / activate:** on the investor detail page, with an optional note for the activity log. A deactivated investor is signed out everywhere and cannot sign in (with the right password they see "account deactivated", with a wrong one the usual generic error). Money is not touched: the balance keeps receiving the monthly result, and open deposits and withdrawals can still be reconciled, approved or rejected; the investor can withdraw again once activated. Activating restores sign-in with the existing password. The Investors list shows active investors by default (filter: Active / Deactivated / All); a search without a chosen filter, such as from the top bar, covers all. The admin overview counts active investors only; the balances CSV has a status column. Admin accounts can never be deactivated (database check).
 - The admin's own email and name are not editable in the UI. The seed never changes an existing admin's password, so `ADMIN_PASSWORD` does not conflict with a password changed on `/admin/profile`.
-- **Updating an existing installation:** run `npm run db:migrate` immediately after updating the code. Until it has run, sign-in, registration and the admin pages fail with `column "investor_code" does not exist`. Compose runs it through the `migrate` service. The migration adds `users.investor_code` and assigns a code to every existing investor.
+- **Updating an existing installation:** run `npm run db:migrate` immediately after updating the code. Until it has run, sign-in, registration and the admin pages fail with `column "investor_code" does not exist` or `column "deactivated_at" does not exist`. Compose runs it through the `migrate` service. Migration `0003` adds `users.investor_code` and assigns a code to every existing investor; `0004` adds `users.deactivated_at` (every existing investor stays active).
 
 ## Security
 
@@ -188,8 +192,8 @@ Safeguards when booking:
 - **Role-based access**: `investor` and `admin`. Every page, Server Action and Route Handler calls `requireInvestor()` / `requireAdmin()` (`src/server/auth/guards.ts`). The proxy only performs an optimistic redirect.
 - **Input validation**: Zod schemas for every form (`src/lib/validation.ts`), including IBAN checksum and amount limits (1,00 € – 1.000.000,00 €).
 - **Rate limiting** (Redis): login per IP and per email, registration per IP, money movements per user. If Redis is unreachable, requests are allowed (fail-open) and an error is logged.
-- **Activity logging**: registrations, logins (including failed ones), logouts, every booking, every admin decision and every report export, with actor, IP and details. Account events: `auth.password_changed` and `auth.password_change_failed` (own password), `user.updated` (admin edits name or email, with old and new value) and `user.password_reset` (admin sets a password). Passwords and hashes are never logged.
-- **Password changes**: a changed or admin-set password deletes the other sessions of that user.
+- **Activity logging**: registrations, logins (including failed ones), logouts, every booking, every admin decision and every report export, with actor, IP and details. Account events: `auth.password_changed` and `auth.password_change_failed` (own password), `user.updated` (admin edits name or email, with old and new value), `user.password_reset` (admin sets a password), `user.created`, `user.deactivated` and `user.activated` (with the admin's optional note) and `auth.login_blocked` (correct password for a deactivated account). Passwords and hashes are never logged.
+- **Password changes**: a changed or admin-set password deletes the other sessions of that user. **Deactivation** deletes all of the investor's sessions, and the session lookup ignores deactivated users as a second safeguard.
 - **CSRF**: Server Actions only accept same-origin requests. **Headers**: `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`.
 - **CSV injection**: cells starting with `= + - @` are neutralised in exports.
 
@@ -200,7 +204,7 @@ src/
 ├── app/                    Routes only (thin pages)
 │   ├── (auth)/             /login, /register
 │   ├── (investor)/         /dashboard, /transactions, /deposit, /withdraw, /profile
-│   ├── admin/              /admin, deposits, withdrawals, investors (+ detail page), returns, reports, activity, profile
+│   ├── admin/              /admin, deposits, withdrawals, investors (+ new, detail page), returns, reports, activity, profile
 │   └── api/                /api/health, /api/reports/[reportType] (CSV)
 ├── actions/                Server Actions: validate → authorize → call a service
 ├── components/
@@ -286,5 +290,5 @@ npm run typecheck
 | Login does nothing in production over HTTP | Cookies are `Secure` in production. Serve via HTTPS, or set `COOKIE_SECURE=false` for a test setup. |
 | `Invalid environment configuration` | `DATABASE_URL` or `REDIS_URL` is missing. See `.env.example`. |
 | Port 5432/6379 already in use locally | Compose doesn't publish db/redis ports. For local dev, point `DATABASE_URL`/`REDIS_URL` at your existing services. |
-| Sign-in, registration or the admin pages fail with `column "investor_code" does not exist` | The code was updated but the migration has not run yet. Run `npm run db:migrate`. |
+| Sign-in, registration or the admin pages fail with `column "investor_code" does not exist` or `column "deactivated_at" does not exist` | The code was updated but the migrations have not run yet. Run `npm run db:migrate`. |
 | Need a clean database in development | Ledger and audit tables are append-only (TRUNCATE is blocked). Drop and recreate the database, then run `npm run db:migrate && npm run db:seed`. |

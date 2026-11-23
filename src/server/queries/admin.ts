@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, desc, eq, ilike, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, isNotNull, isNull, or, sql, type SQL } from "drizzle-orm";
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import { z } from "zod";
 import { normalizeInvestorCodeQuery } from "@/lib/investor-code";
@@ -15,6 +15,7 @@ import {
   withdrawals,
   type AuditAction,
   type DepositStatus,
+  type InvestorStatus,
   type WithdrawalStatus,
 } from "@/server/db/schema";
 import { toContainsPattern } from "./filters";
@@ -28,7 +29,7 @@ export async function getPoolOverview() {
   const db = getDb();
   const [[poolTotals], investorCount, [pendingDeposits], [pendingWithdrawals]] = await Promise.all([
     db.select({ balanceCents: sql<number>`coalesce(sum(${accounts.balanceCents}), 0)`.mapWith(Number) }).from(accounts),
-    db.$count(users, eq(users.role, "investor")),
+    db.$count(users, and(eq(users.role, "investor"), isNull(users.deactivatedAt))),
     db.select(countAndSum(deposits.amountCents)).from(deposits).where(eq(deposits.status, "pending")),
     db.select(countAndSum(withdrawals.amountCents)).from(withdrawals).where(eq(withdrawals.status, "pending")),
   ]);
@@ -196,9 +197,28 @@ export type InvestorRow = {
   balanceCents: number;
   createdAt: Date;
   lastLoginAt: Date | null;
+  /** `null` while the investor is active. */
+  deactivatedAt: Date | null;
+};
+
+const investorRowColumns = {
+  id: users.id,
+  investorCode: sql<string>`${users.investorCode}`,
+  fullName: users.fullName,
+  email: users.email,
+  balanceCents: accounts.balanceCents,
+  createdAt: users.createdAt,
+  lastLoginAt: users.lastLoginAt,
+  deactivatedAt: users.deactivatedAt,
+};
+
+const investorStatusFilters: Record<InvestorStatus, SQL> = {
+  active: isNull(users.deactivatedAt),
+  deactivated: isNotNull(users.deactivatedAt),
 };
 
 export async function listInvestors(options: {
+  status: InvestorStatus | "all";
   search?: string;
   page: number;
   pageSize?: number;
@@ -206,30 +226,22 @@ export async function listInvestors(options: {
   const db = getDb();
   const pageSize = options.pageSize ?? DEFAULT_PAGE_SIZE;
   const searchTerm = options.search?.trim();
-  const roleFilter = eq(users.role, "investor");
   const searchPattern = searchTerm ? toContainsPattern(searchTerm) : undefined;
-  const filter: SQL | undefined = searchPattern
-    ? and(
-        roleFilter,
-        or(
+  const filter: SQL | undefined = and(
+    eq(users.role, "investor"),
+    options.status === "all" ? undefined : investorStatusFilters[options.status],
+    searchPattern
+      ? or(
           ilike(users.fullName, searchPattern),
           ilike(users.email, searchPattern),
           ilike(users.investorCode, toContainsPattern(normalizeInvestorCodeQuery(options.search ?? ""))),
-        ),
-      )
-    : roleFilter;
+        )
+      : undefined,
+  );
 
   const [rows, [{ totalCount }]] = await Promise.all([
     db
-      .select({
-        id: users.id,
-        investorCode: sql<string>`${users.investorCode}`,
-        fullName: users.fullName,
-        email: users.email,
-        balanceCents: accounts.balanceCents,
-        createdAt: users.createdAt,
-        lastLoginAt: users.lastLoginAt,
-      })
+      .select(investorRowColumns)
       .from(users)
       .innerJoin(accounts, eq(accounts.userId, users.id))
       .where(filter)
@@ -246,7 +258,10 @@ export async function listInvestors(options: {
   return toPaginatedResult(rows, totalCount, options.page, pageSize);
 }
 
-export type InvestorDetail = InvestorRow;
+export type InvestorDetail = InvestorRow & {
+  /** Deposits awaiting reconciliation plus withdrawals under review. */
+  openRequestCount: number;
+};
 
 /** One investor for the admin detail page; `null` for an unknown id, a non-uuid string or a non-investor. */
 export async function getInvestorDetail(userId: string): Promise<InvestorDetail | null> {
@@ -254,15 +269,12 @@ export async function getInvestorDetail(userId: string): Promise<InvestorDetail 
   if (!z.uuid().safeParse(userId).success) {
     return null;
   }
+  const pendingDeposits = sql`(select count(*) from ${deposits} where ${deposits.accountId} = ${accounts.id} and ${deposits.status} = 'pending')`;
+  const pendingWithdrawals = sql`(select count(*) from ${withdrawals} where ${withdrawals.accountId} = ${accounts.id} and ${withdrawals.status} = 'pending')`;
   const [row] = await getDb()
     .select({
-      id: users.id,
-      investorCode: sql<string>`${users.investorCode}`,
-      fullName: users.fullName,
-      email: users.email,
-      balanceCents: accounts.balanceCents,
-      createdAt: users.createdAt,
-      lastLoginAt: users.lastLoginAt,
+      ...investorRowColumns,
+      openRequestCount: sql<number>`${pendingDeposits} + ${pendingWithdrawals}`.mapWith(Number),
     })
     .from(users)
     .innerJoin(accounts, eq(accounts.userId, users.id))

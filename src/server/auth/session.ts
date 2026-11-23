@@ -1,6 +1,6 @@
 import "server-only";
 import { createHash, randomBytes } from "node:crypto";
-import { and, eq, gt, lt } from "drizzle-orm";
+import { and, eq, gt, isNull, lt } from "drizzle-orm";
 import { cookies } from "next/headers";
 import { cache } from "react";
 import { getDb } from "@/server/db/client";
@@ -39,7 +39,10 @@ export async function createSession(userId: string): Promise<void> {
   });
 }
 
-/** Resolves the signed-in user once per request (memoised with React `cache`). */
+/**
+ * Resolves the signed-in user once per request (memoised with React `cache`). A deactivated investor counts as signed
+ * out, even if a session survived.
+ */
 export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
   const cookieStore = await cookies();
   const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
@@ -51,7 +54,9 @@ export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
     .select({ id: users.id, email: users.email, fullName: users.fullName, role: users.role })
     .from(sessions)
     .innerJoin(users, eq(sessions.userId, users.id))
-    .where(and(eq(sessions.id, hashSessionToken(token)), gt(sessions.expiresAt, new Date())))
+    .where(
+      and(eq(sessions.id, hashSessionToken(token)), gt(sessions.expiresAt, new Date()), isNull(users.deactivatedAt)),
+    )
     .limit(1);
 
   return sessionUser ?? null;
@@ -68,7 +73,9 @@ export async function deleteCurrentSession(): Promise<void> {
   const cookieStore = await cookies();
   const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
   if (token) {
-    await getDb().delete(sessions).where(eq(sessions.id, hashSessionToken(token)));
+    await getDb()
+      .delete(sessions)
+      .where(eq(sessions.id, hashSessionToken(token)));
   }
   cookieStore.delete(SESSION_COOKIE_NAME);
 }

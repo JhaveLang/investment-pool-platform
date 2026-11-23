@@ -11,7 +11,8 @@ export type DomainErrorCode =
   | "PERIOD_OUT_OF_ORDER"
   | "UNRECONCILED_DEPOSITS"
   | "PREVIEW_OUTDATED"
-  | "WRONG_PASSWORD";
+  | "WRONG_PASSWORD"
+  | "ACCOUNT_DEACTIVATED";
 
 /**
  * An expected business rule violation. Server actions translate the code into a

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Table, TableBody, TableCell, TableHeaderCell } from "@/components/ui/table";
 import { getI18n } from "@/i18n/server";
@@ -30,9 +31,12 @@ export async function InvestorTable({ investors }: { investors: InvestorRow[] })
               <span className="reference">{investor.investorCode}</span>
             </TableCell>
             <TableCell className="font-medium text-fg">
-              <Link href={`/admin/investors/${investor.id}`} className="hover:text-accent-400 hover:underline">
-                {investor.fullName}
-              </Link>
+              <span className="flex flex-wrap items-center gap-2">
+                <Link href={`/admin/investors/${investor.id}`} className="hover:text-accent-400 hover:underline">
+                  {investor.fullName}
+                </Link>
+                {investor.deactivatedAt ? <Badge>{messages.investorStatus.deactivated}</Badge> : null}
+              </span>
             </TableCell>
             <TableCell>{investor.email}</TableCell>
             <TableCell className="amount text-right font-medium text-fg">

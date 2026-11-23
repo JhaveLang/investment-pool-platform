@@ -1,4 +1,4 @@
-import type { AuditAction, DepositStatus, LedgerEntryType, WithdrawalStatus } from "@/server/db/schema";
+import type { AuditAction, DepositStatus, InvestorStatus, LedgerEntryType, WithdrawalStatus } from "@/server/db/schema";
 import type { DomainErrorCode } from "@/lib/errors";
 import type { PaymentMethod } from "@/lib/fees";
 
@@ -272,6 +272,11 @@ export const de = {
     rejected: "Abgelehnt",
   } satisfies Record<WithdrawalStatus, string>,
 
+  investorStatus: {
+    active: "Aktiv",
+    deactivated: "Deaktiviert",
+  } satisfies Record<InvestorStatus, string>,
+
   columns: {
     investorId: "Anleger-ID",
     date: "Datum",
@@ -324,7 +329,9 @@ export const de = {
     withdrawalsEmpty: "Keine Auszahlungen in dieser Ansicht.",
 
     investorsTitle: "Anleger",
-    investorsSubtitle: "Alle registrierten Anleger und ihre Kontostände.",
+    investorsSubtitle:
+      "Alle Anleger und ihre Kontostände. Öffnen Sie einen Anleger, um Daten zu ändern oder das Konto zu deaktivieren.",
+    newInvestor: "Neuer Anleger",
     investorsEmpty: "Keine Anleger gefunden.",
     searchLabel: "Anleger suchen",
     searchPlaceholder: "Name, E-Mail oder Anleger-ID",
@@ -452,6 +459,34 @@ export const de = {
       unchanged: "Keine Änderungen.",
       passwordSet:
         "Neues Passwort gespeichert. Der Anleger wurde überall abgemeldet – teilen Sie ihm das neue Passwort mit.",
+      created: "Anleger angelegt. Teilen Sie die Zugangsdaten mit: E-Mail-Adresse und Startpasswort.",
+      deactivatedOn: (date: string) => `Deaktiviert am ${date}`,
+      deactivateTitle: "Konto deaktivieren",
+      deactivateDescription:
+        "Der Anleger wird überall abgemeldet und kann sich nicht mehr anmelden. Es wird nichts gelöscht: Buchungen, Kontostand und Protokoll bleiben erhalten, und das Konto lässt sich jederzeit wieder aktivieren.",
+      balanceRemains: (amount: string) =>
+        `Im Konto liegen noch ${amount}. Das Guthaben erhält weiter die Monatsrendite, kann aber erst nach der Aktivierung ausgezahlt werden.`,
+      openRequestsRemain: (count: number) =>
+        count === 1
+          ? "1 offener Antrag kann weiterhin bearbeitet werden."
+          : `${count} offene Anträge können weiterhin bearbeitet werden.`,
+      deactivate: "Deaktivieren",
+      activateTitle: "Konto aktivieren",
+      activateDescription: (date: string) =>
+        `Deaktiviert seit ${date}. Nach der Aktivierung ist die Anmeldung mit dem bisherigen Passwort wieder möglich.`,
+      activate: "Aktivieren",
+      deactivated: "Anleger deaktiviert und überall abgemeldet.",
+      activated: "Anleger aktiviert. Die Anmeldung mit dem bisherigen Passwort ist wieder möglich.",
+    },
+    investorCreate: {
+      title: "Neuer Anleger",
+      subtitle: "Legt ein Anlegerkonto mit Kontostand 0 an. Die Anleger-ID wird automatisch vergeben.",
+      formTitle: "Zugangsdaten",
+      password: "Startpasswort",
+      passwordConfirmation: "Startpasswort bestätigen",
+      passwordHint: "Teilen Sie das Startpasswort dem Anleger mit. Es lässt sich im Profil jederzeit ändern.",
+      submit: "Anleger anlegen",
+      submitPending: "Wird angelegt …",
     },
   },
 
@@ -498,6 +533,10 @@ export const de = {
       "auth.password_change_failed": "Passwortänderung fehlgeschlagen",
       "user.updated": "Anlegerdaten geändert",
       "user.password_reset": "Passwort durch Admin gesetzt",
+      "user.created": "Anleger angelegt",
+      "user.deactivated": "Anleger deaktiviert",
+      "user.activated": "Anleger aktiviert",
+      "auth.login_blocked": "Anmeldung abgewiesen (deaktiviert)",
     } satisfies Record<AuditAction, string>,
   },
 
@@ -570,6 +609,7 @@ export const de = {
       "Noch nicht abgeglichene Einzahlungen könnten in diesem Monat Rendite erhalten. Bitte gleichen Sie diese zuerst ab oder stornieren Sie sie.",
     PREVIEW_OUTDATED: "Die Daten haben sich seit der Vorschau geändert. Bitte berechnen Sie die Vorschau neu.",
     WRONG_PASSWORD: "Das aktuelle Passwort ist nicht korrekt.",
+    ACCOUNT_DEACTIVATED: "Dieses Konto wurde deaktiviert. Bitte wenden Sie sich an die Pool-Verwaltung.",
   } satisfies Record<DomainErrorCode, string>,
 };
 

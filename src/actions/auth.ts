@@ -40,7 +40,8 @@ export async function loginAction(_previousState: ActionState, formData: FormDat
       await createSession(user.id);
     }
   } catch (error) {
-    return toErrorState(error, messages);
+    const failure = toErrorState(error, messages);
+    return failure.status === "error" ? { ...failure, values } : failure;
   }
 
   if (!user) {

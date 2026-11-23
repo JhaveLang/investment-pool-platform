@@ -14,14 +14,17 @@ type RegisterInput = {
   email: string;
   password: string;
   ipAddress: string | null;
+  /** Set when an admin creates the account; a self-registration is logged with the investor as actor. */
+  createdByAdminId?: string;
 };
 
 const MAX_CODE_ATTEMPTS = 5;
 const INVESTOR_CODE_CONSTRAINT = "users_investor_code_unique";
 
 /**
- * Creates the investor and their zero-balance account in one transaction. A fresh investor code is drawn per attempt;
- * a code collision aborts the transaction, so it is retried from the outside. `generateCode` is a test hook.
+ * Creates the investor and their zero-balance account in one transaction, for a self-registration or an admin.
+ * A fresh investor code is drawn per attempt; a code collision aborts the transaction, so it is retried from the
+ * outside. `generateCode` is a test hook.
  */
 export async function registerInvestor(
   input: RegisterInput,
@@ -32,6 +35,7 @@ export async function registerInvestor(
   for (let attempt = 1; ; attempt++) {
     try {
       return await getDb().transaction(async (tx) => {
+        const investorCode = generateCode();
         const [user] = await tx
           .insert(users)
           .values({
@@ -39,19 +43,31 @@ export async function registerInvestor(
             email: input.email,
             passwordHash,
             role: "investor",
-            investorCode: generateCode(),
+            investorCode,
           })
           .returning({ id: users.id, email: users.email, fullName: users.fullName, role: users.role });
 
         await tx.insert(accounts).values({ userId: user.id });
 
-        await recordAudit(tx, {
-          actorUserId: user.id,
-          action: "auth.registered",
-          entityType: "user",
-          entityId: user.id,
-          ipAddress: input.ipAddress,
-        });
+        await recordAudit(
+          tx,
+          input.createdByAdminId
+            ? {
+                actorUserId: input.createdByAdminId,
+                action: "user.created",
+                entityType: "user",
+                entityId: user.id,
+                metadata: { investorName: user.fullName, investorCode },
+                ipAddress: input.ipAddress,
+              }
+            : {
+                actorUserId: user.id,
+                action: "auth.registered",
+                entityType: "user",
+                entityId: user.id,
+                ipAddress: input.ipAddress,
+              },
+        );
 
         return user;
       });
@@ -73,7 +89,10 @@ type AuthenticateInput = {
   ipAddress: string | null;
 };
 
-/** Verifies credentials and logs the attempt. Returns `null` for any failure. */
+/**
+ * Verifies credentials and logs the attempt. Returns `null` for wrong credentials. A deactivated investor who enters
+ * the right password gets `ACCOUNT_DEACTIVATED`, so only the password holder learns the account's status.
+ */
 export async function authenticate(input: AuthenticateInput): Promise<SessionUser | null> {
   const db = getDb();
   const [user] = await db.select().from(users).where(eq(users.email, input.email)).limit(1);
@@ -89,6 +108,17 @@ export async function authenticate(input: AuthenticateInput): Promise<SessionUse
       ipAddress: input.ipAddress,
     });
     return null;
+  }
+
+  if (user.deactivatedAt) {
+    await recordAudit(db, {
+      actorUserId: user.id,
+      action: "auth.login_blocked",
+      entityType: "user",
+      entityId: user.id,
+      ipAddress: input.ipAddress,
+    });
+    throw new DomainError("ACCOUNT_DEACTIVATED");
   }
 
   await db.update(users).set({ lastLoginAt: new Date() }).where(eq(users.id, user.id));

@@ -267,6 +267,11 @@ export const en: Messages = {
     rejected: "Rejected",
   },
 
+  investorStatus: {
+    active: "Active",
+    deactivated: "Deactivated",
+  },
+
   columns: {
     investorId: "Investor ID",
     date: "Date",
@@ -318,7 +323,9 @@ export const en: Messages = {
     withdrawalsEmpty: "No withdrawals in this view.",
 
     investorsTitle: "Investors",
-    investorsSubtitle: "All registered investors and their balances.",
+    investorsSubtitle:
+      "All investors and their balances. Open an investor to edit their details or deactivate the account.",
+    newInvestor: "New investor",
     investorsEmpty: "No investors found.",
     searchLabel: "Search investors",
     searchPlaceholder: "Name, email or investor ID",
@@ -446,6 +453,32 @@ export const en: Messages = {
       unchanged: "No changes.",
       passwordSet:
         "New password saved. The investor has been signed out everywhere – please pass the new password on to them.",
+      created: "Investor created. Pass on the sign-in details: email address and starting password.",
+      deactivatedOn: (date: string) => `Deactivated on ${date}`,
+      deactivateTitle: "Deactivate account",
+      deactivateDescription:
+        "The investor is signed out everywhere and can no longer sign in. Nothing is deleted: bookings, balance and the activity log stay, and the account can be activated again at any time.",
+      balanceRemains: (amount: string) =>
+        `The account still holds ${amount}. The balance keeps receiving the monthly result but can only be withdrawn once the account is activated again.`,
+      openRequestsRemain: (count: number) =>
+        count === 1 ? "1 open request can still be decided." : `${count} open requests can still be decided.`,
+      deactivate: "Deactivate",
+      activateTitle: "Activate account",
+      activateDescription: (date: string) =>
+        `Deactivated since ${date}. Once activated, the investor can sign in again with their existing password.`,
+      activate: "Activate",
+      deactivated: "Investor deactivated and signed out everywhere.",
+      activated: "Investor activated. They can sign in again with their existing password.",
+    },
+    investorCreate: {
+      title: "New investor",
+      subtitle: "Creates an investor account with a zero balance. The investor ID is assigned automatically.",
+      formTitle: "Sign-in details",
+      password: "Starting password",
+      passwordConfirmation: "Confirm starting password",
+      passwordHint: "Pass the starting password on to the investor. They can change it on their profile at any time.",
+      submit: "Create investor",
+      submitPending: "Creating …",
     },
   },
 
@@ -492,6 +525,10 @@ export const en: Messages = {
       "auth.password_change_failed": "Password change failed",
       "user.updated": "Investor details changed",
       "user.password_reset": "Password set by admin",
+      "user.created": "Investor created",
+      "user.deactivated": "Investor deactivated",
+      "user.activated": "Investor activated",
+      "auth.login_blocked": "Sign-in refused (deactivated)",
     },
   },
 
@@ -563,5 +600,6 @@ export const en: Messages = {
       "Unreconciled deposits could earn returns in this month. Please reconcile or cancel them first.",
     PREVIEW_OUTDATED: "The data has changed since the preview. Please calculate the preview again.",
     WRONG_PASSWORD: "The current password is incorrect.",
+    ACCOUNT_DEACTIVATED: "This account has been deactivated. Please contact the pool administrator.",
   },
 };

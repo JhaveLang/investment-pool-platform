@@ -137,6 +137,13 @@ function createSchemas(locale: Locale) {
         path: ["newPasswordConfirmation"],
       }),
 
+    /** Deactivating or activating an investor (`status` is the new status), with an optional note for the log. */
+    adminInvestorStatusSchema: z.object({
+      userId: z.uuid({ error: text.invalidRequest }),
+      status: z.enum(["active", "deactivated"], { error: text.invalidRequest }),
+      note: optionalNoteSchema,
+    }),
+
     depositSchema: z.object({
       amount: amountSchema,
       method: paymentMethodSchema,

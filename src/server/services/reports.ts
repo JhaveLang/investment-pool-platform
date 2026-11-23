@@ -96,6 +96,10 @@ function createReportBuilders({ messages, format }: I18n): Record<ReportType, Re
         { header: csvText.email, value: (row) => row.investorEmail },
         { header: csvText.balance, value: (row) => format.decimal(row.balanceCents) },
         { header: csvText.registeredAt, value: (row) => format.exportDateTime(row.registeredAt) },
+        {
+          header: csvText.status,
+          value: (row) => messages.investorStatus[row.deactivatedAt ? "deactivated" : "active"],
+        },
       ],
     }),
   };

@@ -56,7 +56,11 @@ export type AuditAction =
   | "auth.password_changed"
   | "auth.password_change_failed"
   | "user.updated"
-  | "user.password_reset";
+  | "user.password_reset"
+  | "user.created"
+  | "user.deactivated"
+  | "user.activated"
+  | "auth.login_blocked";
 
 // ---------------------------------------------------------------------------
 // Shared column helpers
@@ -83,10 +87,13 @@ export const users = pgTable(
     role: userRoleEnum("role").notNull().default("investor"),
     createdAt: createdAt(),
     lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
+    /** Set while an admin has deactivated the investor: no sign-in, no sessions. Their money is untouched. */
+    deactivatedAt: timestamp("deactivated_at", { withTimezone: true }),
   },
   (table) => [
     check("users_investor_code_format", sql`${table.investorCode} ~ '^[0-9]{2}[A-HJ-NP-Z]{2}[0-9]{2}$'`),
     check("users_investor_code_required", sql`${table.role} <> 'investor' OR ${table.investorCode} IS NOT NULL`),
+    check("users_only_investors_deactivated", sql`${table.role} = 'investor' OR ${table.deactivatedAt} IS NULL`),
   ],
 );
 
@@ -288,6 +295,8 @@ export const auditLogs = pgTable(
 
 export type User = typeof users.$inferSelect;
 export type UserRole = (typeof userRoleEnum.enumValues)[number];
+/** Derived from `users.deactivated_at` (null = active). */
+export type InvestorStatus = "active" | "deactivated";
 export type Account = typeof accounts.$inferSelect;
 export type Deposit = typeof deposits.$inferSelect;
 export type DepositStatus = (typeof depositStatusEnum.enumValues)[number];

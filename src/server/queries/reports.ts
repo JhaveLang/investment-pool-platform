@@ -85,6 +85,7 @@ export async function loadBalanceExportRows() {
       investorEmail: users.email,
       balanceCents: accounts.balanceCents,
       registeredAt: users.createdAt,
+      deactivatedAt: users.deactivatedAt,
     })
     .from(accounts)
     .innerJoin(users, eq(accounts.userId, users.id))

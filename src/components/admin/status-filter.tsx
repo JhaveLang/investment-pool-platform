@@ -6,9 +6,27 @@ type StatusFilterProps<Value extends string> = {
   basePath: string;
   current: Value;
   options: Array<{ value: Value; label: string }>;
+  /** Other query parameters (e.g. the search) to keep when switching. */
+  query?: Record<string, string | undefined>;
 };
 
-export async function StatusFilter<Value extends string>({ basePath, current, options }: StatusFilterProps<Value>) {
+function buildFilterHref(basePath: string, status: string, query: StatusFilterProps<string>["query"]): string {
+  const searchParams = new URLSearchParams();
+  for (const [key, value] of Object.entries(query ?? {})) {
+    if (value) {
+      searchParams.set(key, value);
+    }
+  }
+  searchParams.set("status", status);
+  return `${basePath}?${searchParams.toString()}`;
+}
+
+export async function StatusFilter<Value extends string>({
+  basePath,
+  current,
+  options,
+  query,
+}: StatusFilterProps<Value>) {
   const { messages } = await getI18n();
 
   return (
@@ -18,7 +36,7 @@ export async function StatusFilter<Value extends string>({ basePath, current, op
         return (
           <Link
             key={option.value}
-            href={`${basePath}?status=${option.value}`}
+            href={buildFilterHref(basePath, option.value, query)}
             aria-current={isActive ? "page" : undefined}
             className={segmentStyles(isActive)}
           >
