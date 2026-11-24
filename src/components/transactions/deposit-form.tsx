@@ -8,7 +8,7 @@ import { SubmitButton } from "@/components/ui/submit-button";
 import { useFormatter, useLocale, useMessages } from "@/i18n/client";
 import { fieldErrorsOf, idleActionState, submittedValuesOf } from "@/lib/action-state";
 import { depositFeeCents, FEE_PERCENT } from "@/lib/fees";
-import { MIN_TRANSACTION_CENTS, parseAmountToCents } from "@/lib/money";
+import { parseAmountToCents } from "@/lib/money";
 import { ACCRUAL_DELAY_DAYS, MINIMUM_TERM_DAYS } from "@/lib/returns";
 import { AmountField } from "./amount-field";
 import { Breakdown, ProjectedBalance } from "./breakdown";
@@ -53,7 +53,6 @@ export function DepositForm({ idempotencyKey, balanceCents }: DepositFormProps) 
         onChange={setAmountText}
         quickAdds={QUICK_ADDS}
         placeholder={text.amountPlaceholder}
-        note={text.minimum(format.currency(MIN_TRANSACTION_CENTS))}
         error={fieldErrors.amount ?? fieldErrors.idempotencyKey}
       />
       <Breakdown

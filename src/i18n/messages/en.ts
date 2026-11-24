@@ -268,7 +268,6 @@ export const en: Messages = {
     historyTitle: "Your deposits",
     empty: "You have not made any deposits yet.",
     switchLabel: "Deposit",
-    minimum: (amount: string) => `Min. ${amount}`,
     noFee: "No fee",
     feeLabel: "Fee",
     creditedLabel: "Credited to your account",
@@ -818,6 +817,7 @@ export const en: Messages = {
   },
 
   amountField: {
+    limits: (minimum: string, maximum: string) => `${minimum} – ${maximum}`,
     addAmount: (amount: string) => `Add ${amount}`,
     max: "Max",
   },

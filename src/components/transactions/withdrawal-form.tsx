@@ -9,7 +9,7 @@ import { SubmitButton } from "@/components/ui/submit-button";
 import { useFormatter, useLocale, useMessages } from "@/i18n/client";
 import { fieldErrorsOf, idleActionState, submittedValuesOf } from "@/lib/action-state";
 import { FEE_PERCENT, maxWithdrawalPayoutCents, withdrawalFeeCents } from "@/lib/fees";
-import { parseAmountToCents } from "@/lib/money";
+import { MAX_TRANSACTION_CENTS, parseAmountToCents } from "@/lib/money";
 import { PAYOUT_DEADLINE_DAYS } from "@/lib/returns";
 import { AmountField } from "./amount-field";
 import { Breakdown, ProjectedBalance } from "./breakdown";
@@ -37,7 +37,7 @@ export function WithdrawalForm({ idempotencyKey, balanceCents, availableCents }:
   const amountCents = parseAmountToCents(amountText, locale);
   const feeCents = amountCents === null ? 0 : withdrawalFeeCents(amountCents, method);
   const debitCents = amountCents === null ? 0 : amountCents + feeCents;
-  const maxPayoutCents = maxWithdrawalPayoutCents(availableCents, method);
+  const maxPayoutCents = Math.min(maxWithdrawalPayoutCents(availableCents, method), MAX_TRANSACTION_CENTS);
 
   return (
     <form action={formAction} onReset={() => setAmountText("")} noValidate className="flex flex-col gap-5">

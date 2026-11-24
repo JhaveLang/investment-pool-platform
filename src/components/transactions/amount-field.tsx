@@ -2,7 +2,7 @@
 
 import { useFormatter, useLocale, useMessages } from "@/i18n/client";
 import { cn } from "@/lib/cn";
-import { parseAmountToCents } from "@/lib/money";
+import { MAX_TRANSACTION_CENTS, MIN_TRANSACTION_CENTS, parseAmountToCents } from "@/lib/money";
 
 type AmountFieldProps = {
   label: string;
@@ -13,13 +13,11 @@ type AmountFieldProps = {
   /** Fills in the largest possible amount, e.g. what can be withdrawn on this route. */
   maxCents?: number;
   placeholder: string;
-  /** Shown to the right of the label, e.g. the minimum amount. */
-  note?: string;
   hint?: string;
   error?: string;
 };
 
-/** A large amount well with a euro sign and quick-add steps; submitted as `amount`. */
+/** A large amount well with a euro sign, the limits and quick-add steps (up to the limit); submitted as `amount`. */
 export function AmountField({
   label,
   value,
@@ -27,7 +25,6 @@ export function AmountField({
   quickAdds,
   maxCents,
   placeholder,
-  note,
   hint,
   error,
 }: AmountFieldProps) {
@@ -47,7 +44,9 @@ export function AmountField({
         <label htmlFor="field-amount" className="label-caps text-muted">
           {label}
         </label>
-        {note ? <span className="text-xs text-subtle">{note}</span> : null}
+        <span className="text-xs text-subtle">
+          {text.limits(format.currency(MIN_TRANSACTION_CENTS), format.currency(MAX_TRANSACTION_CENTS))}
+        </span>
       </div>
       <div
         className={cn(
@@ -78,7 +77,7 @@ export function AmountField({
           <button
             key={step}
             type="button"
-            onClick={() => setCents(currentCents + step)}
+            onClick={() => setCents(Math.min(currentCents + step, MAX_TRANSACTION_CENTS))}
             className={pillStyles}
             aria-label={text.addAmount(format.currency(step))}
           >

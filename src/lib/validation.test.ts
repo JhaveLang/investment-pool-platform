@@ -39,6 +39,35 @@ describe("depositSchema", () => {
   });
 });
 
+describe("amount limits", () => {
+  const deposit = (amount: string) => ({ method: "crypto", amount, idempotencyKey: IDEMPOTENCY_KEY });
+  const withdrawal = (amount: string) => ({ ...deposit(amount), walletAddress: WALLET });
+
+  it("allows up to 10.000,00 € per deposit and per withdrawal", () => {
+    expect(depositSchema.safeParse(deposit("10.000,00")).data?.amount).toBe(1_000_000);
+    expect(withdrawalSchema.safeParse(withdrawal("10.000,00")).data?.amount).toBe(1_000_000);
+  });
+
+  it("refuses a cent more, on the amount field", () => {
+    for (const result of [depositSchema.safeParse(deposit("10.000,01")), withdrawalSchema.safeParse(withdrawal("10.000,01"))]) {
+      expect(failedField(result)).toBe("amount");
+      expect(result.error?.issues[0].message).toMatch(/^Der Höchstbetrag beträgt 10\.000,00\s€\.$/);
+    }
+  });
+
+  it("applies to bank payouts and in English too", () => {
+    const english = getSchemas("en");
+    const bankPayout = { method: "bank_transfer", iban: "DE89370400440532013000", idempotencyKey: IDEMPOTENCY_KEY };
+    expect(english.withdrawalSchema.safeParse({ ...bankPayout, amount: "10,000.00" }).success).toBe(true);
+    expect(failedField(english.withdrawalSchema.safeParse({ ...bankPayout, amount: "10,000.01" }))).toBe("amount");
+  });
+
+  it("keeps the 1,00 € minimum", () => {
+    expect(depositSchema.safeParse(deposit("1,00")).success).toBe(true);
+    expect(failedField(depositSchema.safeParse(deposit("0,99")))).toBe("amount");
+  });
+});
+
 describe("withdrawalSchema", () => {
   it("accepts a bank payout and normalises the IBAN", () => {
     const result = withdrawalSchema.safeParse({

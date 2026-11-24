@@ -276,7 +276,6 @@ export const de = {
     historyTitle: "Ihre Einzahlungen",
     empty: "Sie haben noch keine Einzahlungen getätigt.",
     switchLabel: "Einzahlen",
-    minimum: (amount: string) => `Min. ${amount}`,
     noFee: "Keine Gebühr",
     feeLabel: "Gebühr",
     creditedLabel: "Gutschrift auf Ihr Konto",
@@ -831,6 +830,7 @@ export const de = {
   },
 
   amountField: {
+    limits: (minimum: string, maximum: string) => `${minimum} – ${maximum}`,
     addAmount: (amount: string) => `${amount} hinzufügen`,
     max: "Max.",
   },
