@@ -14,7 +14,7 @@ export async function StatementAmount({ cents, signed = false }: { cents: number
     return <span className="amount">{format.currency(cents)}</span>;
   }
   return (
-    <span className={cn("amount font-medium", cents < 0 ? "text-loss" : "text-accent-400")}>
+    <span className={cn("amount font-medium", cents < 0 ? "text-loss" : "text-gain")}>
       {format.signedCurrency(cents)}
     </span>
   );
@@ -24,7 +24,7 @@ export async function StatementAmount({ cents, signed = false }: { cents: number
 const TRIMMED_MOVEMENTS = 2;
 
 function MovementAmount({ movement, label }: { movement: StatementMovement; label: string }) {
-  return <span className={cn("amount", movement.amountCents < 0 ? "text-loss" : "text-accent-400")}>{label}</span>;
+  return <span className={cn("amount", movement.amountCents < 0 ? "text-loss" : "text-gain")}>{label}</span>;
 }
 
 type StatementMovementsProps = {

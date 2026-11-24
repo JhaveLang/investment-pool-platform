@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import {
   bigint,
+  boolean,
   char,
   check,
   date,
@@ -60,7 +61,10 @@ export type AuditAction =
   | "user.created"
   | "user.deactivated"
   | "user.activated"
-  | "auth.login_blocked";
+  | "auth.login_blocked"
+  | "news.created"
+  | "news.updated"
+  | "news.deleted";
 
 // ---------------------------------------------------------------------------
 // Shared column helpers
@@ -80,8 +84,8 @@ export const users = pgTable(
   {
     id: uuid("id").primaryKey().defaultRandom(),
     email: varchar("email", { length: 255 }).notNull().unique(),
-    /** Permanent public investor ID like 01GR01; null only for non-investors. */
-    investorCode: varchar("investor_code", { length: 6 }).unique("users_investor_code_unique"),
+    /** Public investor ID like 01GR01 or INV-0042, editable by the admin; null only for non-investors. */
+    investorCode: varchar("investor_code", { length: 20 }).unique("users_investor_code_unique"),
     passwordHash: text("password_hash").notNull(),
     fullName: varchar("full_name", { length: 120 }).notNull(),
     role: userRoleEnum("role").notNull().default("investor"),
@@ -91,7 +95,8 @@ export const users = pgTable(
     deactivatedAt: timestamp("deactivated_at", { withTimezone: true }),
   },
   (table) => [
-    check("users_investor_code_format", sql`${table.investorCode} ~ '^[0-9]{2}[A-HJ-NP-Z]{2}[0-9]{2}$'`),
+    // Same rule as INVESTOR_CODE_PATTERN in src/lib/investor-code.ts.
+    check("users_investor_code_format", sql`${table.investorCode} ~ '^[A-Z0-9-]{6,20}$'`),
     check("users_investor_code_required", sql`${table.role} <> 'investor' OR ${table.investorCode} IS NOT NULL`),
     check("users_only_investors_deactivated", sql`${table.role} = 'investor' OR ${table.deactivatedAt} IS NULL`),
   ],
@@ -296,6 +301,36 @@ export const auditLogs = pgTable(
 );
 
 // ---------------------------------------------------------------------------
+// Public website
+// ---------------------------------------------------------------------------
+
+/** Notices on the public News page, written by the admin. Not money data, so they can be edited and deleted. */
+export const newsEntries = pgTable(
+  "news_entries",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    /** The date shown with the notice; the website lists notices newest first. */
+    publishedOn: date("published_on", { mode: "string" }).notNull(),
+    textDe: text("text_de").notNull(),
+    /** Optional; the English website shows the German text when it is missing. */
+    textEn: text("text_en"),
+    /** Hidden notices stay in the admin list but are not shown on the website. */
+    visible: boolean("visible").notNull().default(true),
+    createdAt: createdAt(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    // Same date: the notice added later comes first.
+    index("news_entries_published_idx").on(table.publishedOn.desc(), table.createdAt.desc()),
+    check("news_entries_text_de_length", sql`char_length(${table.textDe}) between 1 and 500`),
+    check(
+      "news_entries_text_en_length",
+      sql`${table.textEn} IS NULL OR char_length(${table.textEn}) between 1 and 500`,
+    ),
+  ],
+);
+
+// ---------------------------------------------------------------------------
 // Inferred types
 // ---------------------------------------------------------------------------
 
@@ -311,3 +346,4 @@ export type WithdrawalStatus = (typeof withdrawalStatusEnum.enumValues)[number];
 export type ReturnPeriod = typeof returnPeriods.$inferSelect;
 export type LedgerEntry = typeof ledgerEntries.$inferSelect;
 export type LedgerEntryType = (typeof ledgerEntryTypeEnum.enumValues)[number];
+export type NewsEntry = typeof newsEntries.$inferSelect;

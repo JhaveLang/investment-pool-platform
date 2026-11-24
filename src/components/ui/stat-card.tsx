@@ -39,13 +39,13 @@ export function StatCard({ label, value, aside, children, className, valueTestId
   );
 }
 
-/** Emerald (or salmon) delta pill for a stat card. */
+/** Green (or red) delta pill for a stat card. */
 export function DeltaChip({ value, negative = false }: { value: string; negative?: boolean }) {
   return (
     <span
       className={cn(
         "label-caps inline-flex shrink-0 items-center rounded-full px-2 py-0.5",
-        negative ? "bg-loss/10 text-loss" : "bg-accent-400/10 text-accent-400",
+        negative ? "bg-loss/10 text-loss" : "bg-gain/10 text-gain",
       )}
     >
       {value}

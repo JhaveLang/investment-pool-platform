@@ -9,7 +9,7 @@ export function Breakdown({ rows }: { rows: Array<{ label: string; value: ReactN
       {rows.map((row) => (
         <div key={row.label} className="flex items-start justify-between gap-4">
           <dt className="text-muted">{row.label}</dt>
-          <dd className={cn("amount text-right font-semibold", row.emphasis ? "text-accent-400" : "text-fg")}>
+          <dd className={cn("amount text-right font-semibold", row.emphasis ? "text-gain" : "text-fg")}>
             {row.value}
           </dd>
         </div>
@@ -18,7 +18,7 @@ export function Breakdown({ rows }: { rows: Array<{ label: string; value: ReactN
   );
 }
 
-/** The resulting balance in large emerald figures. */
+/** The resulting balance in large brand-colored figures. */
 export function ProjectedBalance({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between gap-3 rounded-xl bg-well px-4 py-3.5">

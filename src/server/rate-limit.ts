@@ -9,7 +9,6 @@ export type RateLimitRule = {
 export const rateLimitRules = {
   loginPerIp: { limit: 20, windowSeconds: 15 * 60 },
   loginPerEmail: { limit: 5, windowSeconds: 15 * 60 },
-  registerPerIp: { limit: 5, windowSeconds: 60 * 60 },
   passwordChangePerUser: { limit: 5, windowSeconds: 15 * 60 },
   moneyMovementPerUser: { limit: 10, windowSeconds: 60 },
 } satisfies Record<string, RateLimitRule>;

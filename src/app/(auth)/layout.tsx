@@ -5,7 +5,7 @@ import { Icon, type IconName } from "@/components/ui/icon";
 import { getI18n } from "@/i18n/server";
 import { ACCRUAL_DELAY_DAYS, MINIMUM_TERM_DAYS, PAYOUT_DEADLINE_DAYS } from "@/lib/returns";
 
-/** Sign-in and registration: the pool's rules on a glass panel beside the form from `lg`, stacked on phones. */
+/** Sign-in: the pool's rules on a glass panel beside the form from `lg`, stacked on phones. */
 export default async function AuthLayout({ children }: { children: ReactNode }) {
   const { messages } = await getI18n();
   const text = messages.auth;
@@ -50,7 +50,7 @@ export default async function AuthLayout({ children }: { children: ReactNode }) 
 
         <div className="w-full">
           <p className="mb-6 text-center text-sm text-muted lg:hidden">{messages.app.description}</p>
-          <div className="rounded-2xl border border-line bg-surface p-6 shadow-[0_16px_32px_-8px_rgba(0,0,0,0.6)] sm:p-8">
+          <div className="rounded-2xl border border-line bg-surface p-6 shadow-[0_16px_32px_-8px_rgba(29,22,33,0.16)] sm:p-8">
             {children}
           </div>
           <ul className="mt-6 flex flex-col gap-2 lg:hidden">

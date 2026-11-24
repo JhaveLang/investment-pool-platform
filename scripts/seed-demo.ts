@@ -17,7 +17,7 @@ import { addMonths, firstDayOfMonth, monthOf, todayIsoDate, type IsoDate, type I
 import { closeDb, getDb } from "@/server/db/client";
 import { deposits, returnPeriods, users, withdrawals } from "@/server/db/schema";
 import { setInvestorStatus } from "@/server/services/account";
-import { registerInvestor } from "@/server/services/auth";
+import { createInvestor } from "@/server/services/auth";
 import { createDeposit, reconcileDeposit } from "@/server/services/deposits";
 import { bookMonthlyReturn, previewMonthlyReturn } from "@/server/services/returns";
 import { approveWithdrawal, requestWithdrawal } from "@/server/services/withdrawals";
@@ -43,7 +43,7 @@ const euro = (amount: number) => Math.round(amount * 100);
 
 async function investor(fullName: string, password: string) {
   const email = `${fullName.toLowerCase().replace(/\s+/g, ".")}@example.com`;
-  const user = await registerInvestor({ fullName, email, password, ipAddress: null });
+  const user = await createInvestor({ fullName, email, password, ipAddress: null, createdByAdminId: adminId });
   return { ...user, email };
 }
 

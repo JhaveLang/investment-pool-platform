@@ -3,10 +3,16 @@ import { randomInt } from "node:crypto";
 /** Upper-case letters without I and O (easily confused with 1 and 0). */
 export const INVESTOR_CODE_LETTERS = "ABCDEFGHJKLMNPQRSTUVWXYZ";
 
-/** Investor ID shape: 2 digits, 2 letters, 2 digits, e.g. "01GR01". */
-export const INVESTOR_CODE_PATTERN = /^[0-9]{2}[A-HJ-NP-Z]{2}[0-9]{2}$/;
+export const INVESTOR_CODE_MIN_LENGTH = 6;
+export const INVESTOR_CODE_MAX_LENGTH = 20;
 
-/** Generates an investor ID; `randomIndex(n)` must return an integer in [0, n). */
+/**
+ * Investor ID: 6–20 upper-case letters, digits and hyphens, e.g. "01GR01" or "INV-0042". Mirrored by the
+ * `users_investor_code_format` check in the schema; keep both in step.
+ */
+export const INVESTOR_CODE_PATTERN = /^[A-Z0-9-]{6,20}$/;
+
+/** Generates an investor ID like "01GR01"; `randomIndex(n)` must return an integer in [0, n). */
 export function generateInvestorCode(randomIndex: (exclusiveMax: number) => number = randomInt): string {
   const digit = () => String(randomIndex(10));
   const letter = () => INVESTOR_CODE_LETTERS[randomIndex(INVESTOR_CODE_LETTERS.length)];

@@ -42,6 +42,32 @@ function describeEntry({ entityType, entityId, metadata }: AuditLogRow, { messag
   if (typeof metadata.note === "string") {
     details.push(messages.common.quoted(metadata.note));
   }
+  if (entityType === "news") {
+    details.push(...describeNews(metadata, { messages, format }));
+  }
+  return details;
+}
+
+const NEWS_PREVIEW_LENGTH = 90;
+
+/** Date and the start of the German text, the changed fields, and whether the notice is hidden. */
+function describeNews(metadata: Record<string, unknown>, { messages, format }: Pick<I18n, "messages" | "format">) {
+  const text = messages.admin.news;
+  const details: string[] = [];
+  if (typeof metadata.publishedOn === "string" && typeof metadata.text === "string") {
+    const preview =
+      metadata.text.length > NEWS_PREVIEW_LENGTH ? `${metadata.text.slice(0, NEWS_PREVIEW_LENGTH)}…` : metadata.text;
+    details.push(`${format.calendarDate(metadata.publishedOn)}: ${messages.common.quoted(preview)}`);
+  }
+  const isNewsField = (field: unknown): field is keyof typeof text.fields =>
+    typeof field === "string" && field in text.fields;
+  const changed = Array.isArray(metadata.changed) ? metadata.changed.filter(isNewsField) : [];
+  if (changed.length > 0) {
+    details.push(text.changedFields(changed.map((field) => text.fields[field]).join(", ")));
+  }
+  if (metadata.visible === false || (metadata.visible === true && changed.includes("visible"))) {
+    details.push(metadata.visible ? text.visible : text.hidden);
+  }
   return details;
 }
 
@@ -52,11 +78,12 @@ function isFieldChange(value: unknown): value is FieldChange {
 }
 
 /** "Name: from → to" lines for the changed fields of a `user.updated` entry. */
-function describeChanges(changes: unknown, labels: { name: string; email: string }): string[] {
+function describeChanges(changes: unknown, labels: { investorCode: string; name: string; email: string }): string[] {
   if (typeof changes !== "object" || changes === null) {
     return [];
   }
   const fields = [
+    { key: "investorCode", label: labels.investorCode },
     { key: "fullName", label: labels.name },
     { key: "email", label: labels.email },
   ];

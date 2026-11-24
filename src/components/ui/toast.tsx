@@ -30,7 +30,7 @@ type ToastProps = {
 /** One message: icon, caps label, text, a link and a close button. */
 export function Toast({ icon, iconTone, label, children, href, linkLabel, onDismiss, dismissLabel }: ToastProps) {
   return (
-    <div className="pointer-events-auto flex gap-3 rounded-xl border border-white/10 bg-overlay p-3 shadow-[0_16px_32px_-8px_rgba(0,0,0,0.6)]">
+    <div className="pointer-events-auto flex gap-3 rounded-xl border border-line bg-surface p-3 shadow-[0_16px_32px_-8px_rgba(29,22,33,0.16)]">
       <span className={cn("grid size-9 shrink-0 place-items-center rounded-lg bg-raised", iconTone)}>
         <Icon name={icon} className="size-[18px]" />
       </span>

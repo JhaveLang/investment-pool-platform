@@ -12,9 +12,10 @@ type InvestorProfileFormProps = {
   action: (previousState: ActionState, formData: FormData) => Promise<ActionState>;
   fullName: string;
   email: string;
+  investorCode: string | null;
 };
 
-export function InvestorProfileForm({ action, fullName, email }: InvestorProfileFormProps) {
+export function InvestorProfileForm({ action, fullName, email, investorCode }: InvestorProfileFormProps) {
   const text = useMessages();
   const [state, formAction] = useActionState(action, idleActionState);
   const fieldErrors = fieldErrorsOf(state);
@@ -22,8 +23,21 @@ export function InvestorProfileForm({ action, fullName, email }: InvestorProfile
 
   return (
     // Keyed on the saved values so the fields pick up what the server stored after a save.
-    <form key={`${fullName}|${email}`} action={formAction} noValidate className="space-y-5">
+    <form key={`${investorCode}|${fullName}|${email}`} action={formAction} noValidate className="space-y-5">
       <ActionStateAlert state={state} />
+      <FormField
+        name="investorCode"
+        label={text.columns.investorId}
+        autoComplete="off"
+        autoCapitalize="characters"
+        spellCheck={false}
+        maxLength={20}
+        className="max-w-48"
+        defaultValue={submitted.investorCode ?? investorCode ?? ""}
+        required
+        hint={text.admin.investorDetail.investorCodeHint}
+        error={fieldErrors.investorCode}
+      />
       <FormField
         name="fullName"
         label={text.admin.investorDetail.fullName}

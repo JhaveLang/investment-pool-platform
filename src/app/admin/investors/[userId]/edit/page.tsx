@@ -15,7 +15,7 @@ import { getInvestorDetail } from "@/server/queries/admin";
 
 export const generateMetadata = pageMetadata((messages) => messages.admin.investorsTitle);
 
-/** Edit an investor: name and email, a new password, deactivate / activate. */
+/** Edit an investor: investor ID, name and email, a new password, deactivate / activate. */
 export default async function AdminInvestorEditPage({ params }: PageProps<"/admin/investors/[userId]/edit">) {
   await requireAdmin();
   const { userId } = await params;
@@ -70,6 +70,7 @@ export default async function AdminInvestorEditPage({ params }: PageProps<"/admi
                 action={updateInvestorAction.bind(null, investor.id)}
                 fullName={investor.fullName}
                 email={investor.email}
+                investorCode={investor.investorCode}
               />
             </CardContent>
           </Card>

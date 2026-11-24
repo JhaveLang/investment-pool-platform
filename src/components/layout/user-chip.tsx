@@ -22,7 +22,7 @@ export function Avatar({ user }: { user: SessionUser }) {
   );
 }
 
-/** Name with the role underneath in emerald, beside the avatar. */
+/** Name with the role underneath in plum, beside the avatar. */
 export async function UserChip({ user }: { user: SessionUser }) {
   const { messages } = await getI18n();
   return (

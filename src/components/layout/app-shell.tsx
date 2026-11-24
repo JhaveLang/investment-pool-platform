@@ -63,7 +63,7 @@ export async function AppShell({ user, navItems, homeHref, topBarActions, childr
 
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Desktop top bar */}
-        <header className="sticky top-0 z-30 hidden h-16 items-center justify-between gap-4 bg-canvas/80 px-8 shadow-[0_1px_8px_rgba(0,0,0,0.04)] backdrop-blur-xl lg:flex">
+        <header className="sticky top-0 z-30 hidden h-16 items-center justify-between gap-4 bg-canvas/80 px-8 shadow-[0_1px_8px_rgba(29,22,33,0.05)] backdrop-blur-xl lg:flex">
           {isAdmin ? (
             <form method="get" action="/admin/investors" role="search" className="w-full max-w-md">
               <label className="flex items-center gap-2 rounded-lg bg-surface px-4 py-2 text-muted focus-within:ring-2 focus-within:ring-accent-400">
@@ -88,7 +88,7 @@ export async function AppShell({ user, navItems, homeHref, topBarActions, childr
         </header>
 
         {/* Phone top bar */}
-        <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-3 bg-canvas/85 px-4 pt-[env(safe-area-inset-top)] shadow-[0_1px_8px_rgba(0,0,0,0.24)] backdrop-blur-xl lg:hidden">
+        <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-3 bg-canvas/85 px-4 pt-[env(safe-area-inset-top)] shadow-[0_1px_8px_rgba(29,22,33,0.08)] backdrop-blur-xl lg:hidden">
           <a href={homeHref} className="flex min-w-0 items-center gap-2.5">
             <BrandMark className="size-8" />
             <span className="flex min-w-0 flex-col">

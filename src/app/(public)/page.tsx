@@ -4,10 +4,10 @@ import { publicContainer } from "@/components/public/site-layout";
 import { buttonStyles } from "@/components/ui/button";
 import { Icon, type IconName } from "@/components/ui/icon";
 import { SITE } from "@/config/site";
-import { sortedNews } from "@/content/news";
 import { getI18n } from "@/i18n/server";
 import { cn } from "@/lib/cn";
 import { ACCRUAL_DELAY_DAYS, MINIMUM_TERM_DAYS, PAYOUT_DEADLINE_DAYS } from "@/lib/returns";
+import { listPublicNews } from "@/server/queries/news";
 
 const LATEST_NEWS = 3;
 
@@ -18,8 +18,7 @@ const LATEST_NEWS = 3;
 export default async function HomePage() {
   const { messages, format, locale } = await getI18n();
   const text = messages.site;
-  const account = await getAccountLink();
-  const latest = sortedNews().slice(0, LATEST_NEWS);
+  const [account, latest] = await Promise.all([getAccountLink(), listPublicNews(locale, { limit: LATEST_NEWS })]);
   const auth = messages.auth;
   const facts: Array<{ icon: IconName; title: string; detail: string }> = [
     { icon: "lock", title: auth.factTermTitle(MINIMUM_TERM_DAYS), detail: auth.factTermDetail },
@@ -41,7 +40,7 @@ export default async function HomePage() {
             <span aria-hidden className="size-1.5 rounded-full bg-accent-400" />
             <span className="label-caps">{text.since(format.month(SITE.foundedMonth))}</span>
           </span>
-          <h1 className="mt-5 font-display text-[40px] leading-[1.08] font-bold tracking-[-0.03em] text-fg sm:text-[56px]">
+          <h1 className="mt-5 font-display text-[40px] leading-[1.08] font-bold tracking-[-0.03em] text-accent-400 sm:text-[56px]">
             {messages.app.name}
           </h1>
           <p className="mt-3 font-display text-xl font-semibold text-muted sm:text-2xl">{text.tagline}</p>
@@ -60,7 +59,7 @@ export default async function HomePage() {
         <aside className="ambient-glow flex flex-col gap-5 rounded-2xl bg-raised p-6 shadow-xl sm:p-8">
           <span className="label-caps text-accent-400">{text.forInvestors}</span>
           <div>
-            <h2 className="font-display text-2xl font-bold tracking-tight text-fg">{text.accountTitle}</h2>
+            <h2 className="font-display text-2xl font-bold tracking-tight text-accent-400">{text.accountTitle}</h2>
             <p className="mt-2 text-sm leading-relaxed text-muted">{text.accountText}</p>
           </div>
           <ul className="space-y-2.5">
@@ -85,7 +84,7 @@ export default async function HomePage() {
       </section>
 
       <section className={cn(publicContainer, "py-8")}>
-        <h2 className="font-display text-2xl font-bold tracking-tight text-fg">{text.howItWorks}</h2>
+        <h2 className="font-display text-2xl font-bold tracking-tight text-accent-400">{text.howItWorks}</h2>
         <ul className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {facts.map((fact) => (
             <li key={fact.title} className="flex flex-col gap-2 rounded-xl border border-line bg-surface p-5">
@@ -102,7 +101,7 @@ export default async function HomePage() {
       <section className={cn(publicContainer, "grid gap-6 py-8 lg:grid-cols-[minmax(0,1fr)_380px]")}>
         <div className="rounded-2xl border border-line bg-surface p-6 sm:p-8">
           <div className="flex items-center justify-between gap-4">
-            <h2 className="font-display text-xl font-bold tracking-tight text-fg">{text.latestNews}</h2>
+            <h2 className="font-display text-xl font-bold tracking-tight text-accent-400">{text.latestNews}</h2>
             <Link href="/news" className="text-sm font-semibold text-accent-400 hover:underline">
               {text.allNews} →
             </Link>
@@ -112,18 +111,18 @@ export default async function HomePage() {
           ) : (
             <ul className="mt-4 divide-y divide-line">
               {latest.map((entry) => (
-                <li key={`${entry.date}-${entry.text.de}`} className="flex flex-col gap-1 py-3.5 sm:flex-row sm:gap-6">
+                <li key={entry.id} className="flex flex-col gap-1 py-3.5 sm:flex-row sm:gap-6">
                   <time dateTime={entry.date} className="shrink-0 text-sm text-subtle sm:w-28">
                     {format.calendarDate(entry.date)}
                   </time>
-                  <p className="text-sm text-fg">{entry.text[locale]}</p>
+                  <p className="text-sm text-fg">{entry.text}</p>
                 </li>
               ))}
             </ul>
           )}
         </div>
         <div className="flex flex-col gap-4 rounded-2xl border border-line bg-surface p-6 sm:p-8">
-          <h2 className="font-display text-xl font-bold tracking-tight text-fg">{text.contactTitle}</h2>
+          <h2 className="font-display text-xl font-bold tracking-tight text-accent-400">{text.contactTitle}</h2>
           <p className="text-sm leading-relaxed text-muted">{text.contactText}</p>
           <a
             href={`mailto:${SITE.contactEmail}`}

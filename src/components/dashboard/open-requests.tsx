@@ -96,7 +96,7 @@ async function PendingDeposit({ deposit }: { deposit: RecentDeposit }) {
   return (
     <li className="flex items-start justify-between gap-3 rounded-lg bg-raised p-3">
       <div className="flex min-w-0 items-start gap-2.5">
-        <span className="grid size-9 shrink-0 place-items-center rounded-full bg-accent-400/10 text-accent-400">
+        <span className="grid size-9 shrink-0 place-items-center rounded-full bg-gain/10 text-gain">
           <Icon name="arrowDownLeft" className="size-4" />
         </span>
         <div className="min-w-0">
@@ -109,7 +109,7 @@ async function PendingDeposit({ deposit }: { deposit: RecentDeposit }) {
           </div>
         </div>
       </div>
-      <span className="amount shrink-0 text-sm font-bold text-accent-400">
+      <span className="amount shrink-0 text-sm font-bold text-gain">
         {format.signedCurrency(deposit.amountCents - deposit.feeCents)}
       </span>
     </li>

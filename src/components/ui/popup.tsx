@@ -17,7 +17,7 @@ const motionStyles = cn(
   "scale-95 opacity-0 transition-[opacity,scale,overlay,display] transition-discrete duration-200 ease-out",
   "open:scale-100 open:opacity-100 starting:open:scale-95 starting:open:opacity-0",
   "backdrop:bg-black/0 backdrop:transition-[background-color,overlay,display] backdrop:transition-discrete backdrop:duration-200",
-  "open:backdrop:bg-black/60 starting:open:backdrop:bg-black/0",
+  "open:backdrop:bg-black/40 starting:open:backdrop:bg-black/0",
   "motion-reduce:transition-none motion-reduce:backdrop:transition-none",
 );
 
@@ -81,7 +81,7 @@ export function Popup({
         }}
         onSubmit={closeOnSubmit ? close : undefined}
         className={cn(
-          "m-auto max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-2xl border border-white/10 bg-overlay text-left whitespace-normal text-fg shadow-[0_24px_48px_-12px_rgba(0,0,0,0.7)] backdrop:backdrop-blur-sm",
+          "m-auto max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-2xl border border-line bg-surface text-left whitespace-normal text-fg shadow-[0_24px_48px_-12px_rgba(29,22,33,0.22)] backdrop:backdrop-blur-sm",
           sizeStyles[size],
           motionStyles,
         )}

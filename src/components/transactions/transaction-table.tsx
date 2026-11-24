@@ -9,7 +9,7 @@ import type { LedgerEntryType } from "@/server/db/schema";
 import type { LedgerRow } from "@/server/queries/ledger";
 
 const entryIcons: Record<LedgerEntryType, { icon: IconName; tile: string }> = {
-  deposit: { icon: "arrowDownLeft", tile: "bg-accent-400/10 text-accent-400" },
+  deposit: { icon: "arrowDownLeft", tile: "bg-gain/10 text-gain" },
   withdrawal: { icon: "arrowUpRight", tile: "bg-overlay text-muted" },
   deposit_reversal: { icon: "undo", tile: "bg-loss/10 text-loss" },
   withdrawal_reversal: { icon: "undo", tile: "bg-overlay text-muted" },

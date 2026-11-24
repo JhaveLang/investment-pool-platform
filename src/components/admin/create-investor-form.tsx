@@ -37,6 +37,18 @@ export function CreateInvestorForm() {
         error={fieldErrors.email}
       />
       <FormField
+        name="investorCode"
+        label={messages.columns.investorId}
+        autoComplete="off"
+        autoCapitalize="characters"
+        spellCheck={false}
+        maxLength={20}
+        className="max-w-48"
+        defaultValue={values.investorCode}
+        hint={text.investorCodeHint}
+        error={fieldErrors.investorCode}
+      />
+      <FormField
         name="password"
         type="password"
         label={text.password}

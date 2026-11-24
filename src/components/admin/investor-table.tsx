@@ -9,12 +9,13 @@ import { getI18n } from "@/i18n/server";
 import type { IsoMonth } from "@/lib/calendar";
 import type { MonthStatement } from "@/lib/statements";
 import type { InvestorRow } from "@/server/queries/admin";
+import { EditableInvestorCode } from "./investor-code-editor";
 import { InvestorStatusButton } from "./investor-status-button";
 import { StatementAmount, StatementMovements } from "./statement-cells";
 
 // When the table is wider than the screen it scrolls sideways; the actions stay pinned to the right edge so they are
 // always in reach (where everything fits, pinning changes nothing).
-const pinnedActions = "sticky right-0 shadow-[-12px_0_12px_-12px_rgba(0,0,0,0.6)]";
+const pinnedActions = "sticky right-0 shadow-[-12px_0_12px_-12px_rgba(29,22,33,0.16)]";
 // The actions are square icon buttons; aria-labels name action and investor, the title shows the action on hover.
 const iconButton = "w-8 px-0";
 
@@ -26,7 +27,10 @@ type InvestorTableProps = {
   statements: Record<string, MonthStatement>;
 };
 
-/** The investor list with the chosen month's figures, and view / edit / deactivate actions per row. */
+/**
+ * The investor list with the chosen month's figures, and view / edit / deactivate actions per row. A click on an
+ * investor ID edits it in place; render it inside an `InvestorCodeEditor`.
+ */
 export async function InvestorTable({ investors, month, statements }: InvestorTableProps) {
   const { messages, format } = await getI18n();
   const columns = messages.columns;
@@ -58,7 +62,11 @@ export async function InvestorTable({ investors, month, statements }: InvestorTa
           return (
             <tr key={investor.id}>
               <TableCell className="whitespace-nowrap">
-                <span className="reference">{investor.investorCode}</span>
+                <EditableInvestorCode
+                  userId={investor.id}
+                  code={investor.investorCode}
+                  investorName={investor.fullName}
+                />
               </TableCell>
               <TableCell className="font-medium text-fg">
                 <span className="flex flex-wrap items-center gap-2">

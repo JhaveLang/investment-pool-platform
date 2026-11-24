@@ -60,6 +60,7 @@ services:
       DATABASE_URL: *database-url
       REDIS_URL: redis://redis:6379
       COOKIE_SECURE: ${COOKIE_SECURE:-}
+      DEEPL_API_KEY: ${DEEPL_API_KEY:-}
     ports:
       - "${APP_PORT:-3000}:3000"
     depends_on:

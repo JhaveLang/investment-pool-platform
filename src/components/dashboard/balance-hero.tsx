@@ -59,7 +59,7 @@ export async function BalanceHero({ overview, trend, latestRate }: BalanceHeroPr
       </div>
       {overview.totalReturnsCents !== 0 ? (
         <p className="mt-1 text-xs lg:hidden">
-          <span className={overview.totalReturnsCents > 0 ? "font-medium text-accent-400" : "font-medium text-loss"}>
+          <span className={overview.totalReturnsCents > 0 ? "font-medium text-gain" : "font-medium text-loss"}>
             {format.signedCurrency(overview.totalReturnsCents)}
           </span>{" "}
           <span className="text-muted">{text.returnsBookedSuffix}</span>

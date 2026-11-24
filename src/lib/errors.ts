@@ -3,6 +3,7 @@ export type DomainErrorCode =
   | "ALREADY_PROCESSED"
   | "NOT_FOUND"
   | "EMAIL_TAKEN"
+  | "INVESTOR_CODE_TAKEN"
   | "ACCOUNT_MISSING"
   | "MINIMUM_TERM"
   | "INVALID_RECEIPT_DATE"

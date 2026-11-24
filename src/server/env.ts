@@ -21,12 +21,26 @@ const cookieEnvSchema = z.object({
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
 });
 
+const deeplEnvSchema = z.object({
+  // Optional: without a key, news notices are saved untranslated. An empty value (e.g. from docker-compose) counts as
+  // "not set".
+  DEEPL_API_KEY: z.preprocess(
+    (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
+    z.string().trim().optional(),
+  ),
+});
+
 export function getDatabaseUrl(): string {
   return readEnv(databaseEnvSchema).DATABASE_URL;
 }
 
 export function getRedisUrl(): string {
   return readEnv(redisEnvSchema).REDIS_URL;
+}
+
+/** The DeepL API key for translating news notices, or undefined when none is configured. */
+export function getDeeplApiKey(): string | undefined {
+  return readEnv(deeplEnvSchema).DEEPL_API_KEY;
 }
 
 export function isSecureCookieEnabled(): boolean {

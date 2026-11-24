@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getSchemas } from "./validation";
+import { getSchemas, MAX_INVESTOR_CODE_CHANGES } from "./validation";
 
 const {
   depositSchema,
@@ -8,9 +8,13 @@ const {
   returnPreviewSchema,
   bookReturnSchema,
   changePasswordSchema,
+  createInvestorSchema,
   adminUpdateInvestorSchema,
+  adminInvestorCodesSchema,
   adminSetPasswordSchema,
   adminInvestorStatusSchema,
+  newsEntrySchema,
+  newsIdSchema,
 } = getSchemas("de");
 const IDEMPOTENCY_KEY = "3f1b6f0e-8f4f-4a39-9d1c-3c1f6c0b2a11";
 const WALLET = "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh";
@@ -175,18 +179,117 @@ describe("changePasswordSchema", () => {
 });
 
 describe("adminUpdateInvestorSchema", () => {
+  const valid = { userId: IDEMPOTENCY_KEY, fullName: "Anna Schmidt", email: "a@b.de", investorCode: "01GR01" };
+
   it("trims and lower-cases the email", () => {
     const result = adminUpdateInvestorSchema.safeParse({
-      userId: IDEMPOTENCY_KEY,
+      ...valid,
       fullName: " Anna Schmidt ",
       email: " Anna@Example.DE ",
     });
     expect(result.success && result.data).toMatchObject({ fullName: "Anna Schmidt", email: "anna@example.de" });
   });
   it("rejects a non-uuid user id", () =>
+    expect(failedField(adminUpdateInvestorSchema.safeParse({ ...valid, userId: "abc" }))).toBe("userId"));
+  it("trims and upper-cases the investor ID", () => {
+    const result = adminUpdateInvestorSchema.safeParse({ ...valid, investorCode: " 07km42 " });
+    expect(result.success && result.data.investorCode).toBe("07KM42");
+  });
+  it("accepts free-form IDs of 6 to 20 letters, digits and hyphens", () => {
+    for (const investorCode of ["123456", "01IO01", "inv-0042", "KUNDE2024", "A".repeat(20)]) {
+      const result = adminUpdateInvestorSchema.safeParse({ ...valid, investorCode });
+      expect(result.success && result.data.investorCode).toBe(investorCode.toUpperCase());
+    }
+  });
+  it("rejects a malformed investor ID", () => {
+    for (const investorCode of ["", "  ", "12345", "A".repeat(21), "07KM 42", "INV_0042", "ÄBCDEF"]) {
+      expect(failedField(adminUpdateInvestorSchema.safeParse({ ...valid, investorCode }))).toBe("investorCode");
+    }
+  });
+  it("reports why an investor ID is refused: empty, too short or too long", () => {
+    const firstMessage = (investorCode: string) => {
+      const result = adminUpdateInvestorSchema.safeParse({ ...valid, investorCode });
+      return result.success ? null : result.error.issues[0]?.message;
+    };
+    expect(firstMessage(" ")).toBe("Dieses Feld ist erforderlich.");
+    expect(firstMessage("12345")).toBe("Die Anleger-ID muss mindestens 6 Zeichen lang sein.");
+    expect(firstMessage("A".repeat(21))).toBe("Die Anleger-ID darf höchstens 20 Zeichen lang sein.");
+  });
+});
+
+describe("adminInvestorCodesSchema", () => {
+  const ANNA = "3f1b6f0e-8f4f-4a39-9d1c-3c1f6c0b2a12";
+  const BEN = "3f1b6f0e-8f4f-4a39-9d1c-3c1f6c0b2a13";
+  /** "index.field" of every issue, e.g. "1.investorCode". */
+  const issuePaths = (result: ReturnType<typeof adminInvestorCodesSchema.safeParse>) =>
+    result.success ? [] : result.error.issues.map((issue) => issue.path.join("."));
+
+  it("upper-cases several IDs at once", () => {
+    const result = adminInvestorCodesSchema.safeParse([
+      { userId: ANNA, investorCode: " 07km42 " },
+      { userId: BEN, investorCode: "12AB34" },
+    ]);
+    expect(result.success && result.data).toEqual([
+      { userId: ANNA, investorCode: "07KM42" },
+      { userId: BEN, investorCode: "12AB34" },
+    ]);
+  });
+  it("marks a malformed ID on its own row", () =>
     expect(
-      failedField(adminUpdateInvestorSchema.safeParse({ userId: "abc", fullName: "Anna Schmidt", email: "a@b.de" })),
-    ).toBe("userId"));
+      issuePaths(
+        adminInvestorCodesSchema.safeParse([
+          { userId: ANNA, investorCode: "07KM42" },
+          { userId: BEN, investorCode: "07KM 42" },
+        ]),
+      ),
+    ).toEqual(["1.investorCode"]));
+  it("marks both rows when the same ID is entered twice, regardless of case", () =>
+    expect(
+      issuePaths(
+        adminInvestorCodesSchema.safeParse([
+          { userId: ANNA, investorCode: "07KM42" },
+          { userId: BEN, investorCode: "07km42" },
+        ]),
+      ),
+    ).toEqual(["0.investorCode", "1.investorCode"]));
+  it("rejects an empty batch and a non-uuid user id", () => {
+    expect(adminInvestorCodesSchema.safeParse([]).success).toBe(false);
+    expect(issuePaths(adminInvestorCodesSchema.safeParse([{ userId: "abc", investorCode: "07KM42" }]))).toEqual([
+      "0.userId",
+    ]);
+  });
+  it("caps the batch size", () => {
+    const tooMany = Array.from({ length: MAX_INVESTOR_CODE_CHANGES + 1 }, () => ({
+      userId: ANNA,
+      investorCode: "07KM42",
+    }));
+    expect(issuePaths(adminInvestorCodesSchema.safeParse(tooMany))).toContain("");
+  });
+});
+
+describe("createInvestorSchema", () => {
+  const valid = {
+    fullName: "Anna Schmidt",
+    email: "a@b.de",
+    investorCode: "",
+    password: "secret-password",
+    passwordConfirmation: "secret-password",
+  };
+
+  it("leaves the investor ID out when it is empty", () => {
+    const result = createInvestorSchema.safeParse({ ...valid, investorCode: "  " });
+    expect(result.success && result.data.investorCode).toBeUndefined();
+  });
+  it("accepts a chosen investor ID, upper-cased", () => {
+    const result = createInvestorSchema.safeParse({ ...valid, investorCode: "07km42" });
+    expect(result.success && result.data.investorCode).toBe("07KM42");
+  });
+  it("rejects a malformed investor ID", () =>
+    expect(failedField(createInvestorSchema.safeParse({ ...valid, investorCode: "12345" }))).toBe("investorCode"));
+  it("rejects mismatched passwords", () =>
+    expect(failedField(createInvestorSchema.safeParse({ ...valid, passwordConfirmation: "other-password" }))).toBe(
+      "passwordConfirmation",
+    ));
 });
 
 describe("adminSetPasswordSchema", () => {
@@ -221,4 +324,31 @@ describe("adminInvestorStatusSchema", () => {
         adminInvestorStatusSchema.safeParse({ userId: IDEMPOTENCY_KEY, status: "deactivated", note: "x".repeat(501) }),
       ),
     ).toBe("note"));
+});
+
+describe("newsEntrySchema", () => {
+  const valid = { publishedOn: "2026-11-24", textDe: " Neue Bankverbindung. ", visible: true };
+
+  it("trims the German text; there is no English field (DeepL translates)", () => {
+    const result = newsEntrySchema.safeParse({ ...valid, textEn: "ignored" });
+    expect(result.success && result.data).toEqual({
+      publishedOn: "2026-11-24",
+      textDe: "Neue Bankverbindung.",
+      visible: true,
+    });
+  });
+  it("requires a real date and a German text", () => {
+    for (const publishedOn of ["", "24.11.2026", "2026-02-30"]) {
+      expect(failedField(newsEntrySchema.safeParse({ ...valid, publishedOn }))).toBe("publishedOn");
+    }
+    expect(failedField(newsEntrySchema.safeParse({ ...valid, textDe: "   " }))).toBe("textDe");
+  });
+  it("limits the text to 500 characters", () => {
+    expect(newsEntrySchema.safeParse({ ...valid, textDe: "a".repeat(500) }).success).toBe(true);
+    expect(failedField(newsEntrySchema.safeParse({ ...valid, textDe: "a".repeat(501) }))).toBe("textDe");
+  });
+  it("accepts only a uuid as notice id", () => {
+    expect(newsIdSchema.safeParse(IDEMPOTENCY_KEY).success).toBe(true);
+    expect(newsIdSchema.safeParse("abc").success).toBe(false);
+  });
 });

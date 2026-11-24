@@ -1,9 +1,9 @@
 import "server-only";
-import { and, eq, ne } from "drizzle-orm";
+import { and, eq, inArray, ne } from "drizzle-orm";
 import { DomainError } from "@/lib/errors";
 import { hashPassword, verifyPassword } from "@/server/auth/password";
 import { getDb } from "@/server/db/client";
-import { isUniqueViolation } from "@/server/db/errors";
+import { INVESTOR_CODE_CONSTRAINT, isUniqueViolation } from "@/server/db/errors";
 import { sessions, users } from "@/server/db/schema";
 import { recordAudit } from "./audit";
 
@@ -77,10 +77,17 @@ type UpdateInvestorProfileInput = {
   userId: string;
   fullName: string;
   email: string;
+  investorCode: string;
   ipAddress: string | null;
 };
 
-/** Edits an investor's name and email. Returns `"unchanged"` (and writes nothing) when the values are identical. */
+type FieldChange = { from: string | null; to: string };
+
+/**
+ * Edits an investor's name, email and investor ID. The ID is only a display code (records reference the user id),
+ * so changing it leaves bookings and history intact. Returns `"unchanged"` (and writes nothing) when the values are
+ * identical.
+ */
 export async function updateInvestorProfile(input: UpdateInvestorProfileInput): Promise<"updated" | "unchanged"> {
   try {
     return await getDb().transaction(async (tx) => {
@@ -94,31 +101,126 @@ export async function updateInvestorProfile(input: UpdateInvestorProfileInput): 
         throw new DomainError("NOT_FOUND");
       }
 
-      const changes: { fullName?: { from: string; to: string }; email?: { from: string; to: string } } = {};
+      const changes: { fullName?: FieldChange; email?: FieldChange; investorCode?: FieldChange } = {};
       if (investor.fullName !== input.fullName) {
         changes.fullName = { from: investor.fullName, to: input.fullName };
       }
       if (investor.email !== input.email) {
         changes.email = { from: investor.email, to: input.email };
       }
-      if (!changes.fullName && !changes.email) {
+      if (investor.investorCode !== input.investorCode) {
+        changes.investorCode = { from: investor.investorCode, to: input.investorCode };
+      }
+      if (!changes.fullName && !changes.email && !changes.investorCode) {
         return "unchanged";
       }
 
-      await tx.update(users).set({ fullName: input.fullName, email: input.email }).where(eq(users.id, input.userId));
+      await tx
+        .update(users)
+        .set({ fullName: input.fullName, email: input.email, investorCode: input.investorCode })
+        .where(eq(users.id, input.userId));
       await recordAudit(tx, {
         actorUserId: input.adminId,
         action: "user.updated",
         entityType: "user",
         entityId: input.userId,
-        metadata: { investorName: input.fullName, investorCode: investor.investorCode, changes },
+        metadata: { investorName: input.fullName, investorCode: input.investorCode, changes },
         ipAddress: input.ipAddress,
       });
       return "updated";
     });
   } catch (error) {
+    if (isUniqueViolation(error, INVESTOR_CODE_CONSTRAINT)) {
+      throw new DomainError("INVESTOR_CODE_TAKEN");
+    }
     if (isUniqueViolation(error)) {
       throw new DomainError("EMAIL_TAKEN");
+    }
+    throw error;
+  }
+}
+
+export type InvestorCodeChange = { userId: string; investorCode: string };
+
+type UpdateInvestorCodesInput = {
+  adminId: string;
+  changes: InvestorCodeChange[];
+  ipAddress: string | null;
+};
+
+export type UpdateInvestorCodesResult =
+  | { status: "saved"; count: number }
+  /** Nothing was written: these investors' new IDs are held by someone else. */
+  | { status: "taken"; userIds: string[] };
+
+/**
+ * Saves investor IDs edited in the investor list, all or nothing; unchanged ones are skipped. Every taken ID is
+ * reported at once. An ID still held by another investor counts as taken even if that investor gets a new one in the
+ * same batch (the unique check runs row by row), so swapping two IDs takes two saves.
+ */
+export async function updateInvestorCodes(input: UpdateInvestorCodesInput): Promise<UpdateInvestorCodesResult> {
+  const userIds = input.changes.map((change) => change.userId);
+  // The investor being updated, to name the one whose ID a concurrent save took.
+  const progress: { userId?: string } = {};
+  try {
+    return await getDb().transaction(async (tx) => {
+      const investors = await tx
+        .select({ id: users.id, fullName: users.fullName, investorCode: users.investorCode })
+        .from(users)
+        .where(and(inArray(users.id, userIds), eq(users.role, "investor")))
+        .for("update");
+      if (investors.length !== new Set(userIds).size) {
+        throw new DomainError("NOT_FOUND");
+      }
+      const investorById = new Map(investors.map((investor) => [investor.id, investor]));
+      const changed = input.changes.filter(
+        (change) => investorById.get(change.userId)?.investorCode !== change.investorCode,
+      );
+      if (changed.length === 0) {
+        return { status: "saved", count: 0 };
+      }
+
+      const holders = await tx
+        .select({ id: users.id, investorCode: users.investorCode })
+        .from(users)
+        .where(
+          inArray(
+            users.investorCode,
+            changed.map((change) => change.investorCode),
+          ),
+        );
+      const holderByCode = new Map(holders.map((holder) => [holder.investorCode, holder.id]));
+      const taken = changed.filter((change) => {
+        const holderId = holderByCode.get(change.investorCode);
+        return holderId !== undefined && holderId !== change.userId;
+      });
+      if (taken.length > 0) {
+        return { status: "taken", userIds: taken.map((change) => change.userId) };
+      }
+
+      for (const change of changed) {
+        const investor = investorById.get(change.userId)!;
+        progress.userId = change.userId;
+        await tx.update(users).set({ investorCode: change.investorCode }).where(eq(users.id, change.userId));
+        await recordAudit(tx, {
+          actorUserId: input.adminId,
+          action: "user.updated",
+          entityType: "user",
+          entityId: change.userId,
+          metadata: {
+            investorName: investor.fullName,
+            investorCode: change.investorCode,
+            changes: { investorCode: { from: investor.investorCode, to: change.investorCode } },
+          },
+          ipAddress: input.ipAddress,
+        });
+      }
+      return { status: "saved", count: changed.length };
+    });
+  } catch (error) {
+    // Taken by someone else between the check and the update.
+    if (isUniqueViolation(error, INVESTOR_CODE_CONSTRAINT) && progress.userId) {
+      return { status: "taken", userIds: [progress.userId] };
     }
     throw error;
   }

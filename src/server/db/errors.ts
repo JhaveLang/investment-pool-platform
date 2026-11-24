@@ -1,5 +1,8 @@
 const UNIQUE_VIOLATION_CODE = "23505";
 
+/** Unique constraint on `users.investor_code` (see the schema). */
+export const INVESTOR_CODE_CONSTRAINT = "users_investor_code_unique";
+
 /**
  * Drizzle wraps driver errors, so the Postgres error code (and the violated constraint's name) may sit on `cause`.
  * Pass `constraintName` to match only that constraint.

@@ -37,7 +37,7 @@ export function CardContent({ className, ...divProps }: ComponentProps<"div">) {
   return <div className={cn("px-5 pb-5", className)} {...divProps} />;
 }
 
-/** The emerald caps "Alle anzeigen" link in a card header. */
+/** The plum caps "Alle anzeigen" link in a card header. */
 export function CardLink({ className, ...linkProps }: ComponentProps<typeof Link>) {
   return (
     <Link

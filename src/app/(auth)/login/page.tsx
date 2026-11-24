@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { LoginForm } from "@/components/auth/login-form";
 import { getI18n, pageMetadata } from "@/i18n/server";
@@ -19,12 +18,7 @@ export default async function LoginPage() {
       <h1 className="font-display text-2xl leading-tight font-semibold tracking-tight text-fg">{text.loginTitle}</h1>
       <p className="mt-1.5 mb-6 text-sm text-muted">{text.loginSubtitle}</p>
       <LoginForm />
-      <p className="mt-6 border-t border-line pt-5 text-center text-sm text-muted">
-        {text.noAccount}{" "}
-        <Link href="/register" className="font-semibold text-accent-400 hover:text-accent-300">
-          {text.registerLink}
-        </Link>
-      </p>
+      <p className="mt-6 border-t border-line pt-5 text-center text-sm text-muted">{text.accountsByAdmin}</p>
     </>
   );
 }

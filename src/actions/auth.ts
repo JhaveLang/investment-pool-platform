@@ -13,7 +13,7 @@ import { hasDeposit } from "@/server/queries/investor";
 import { consumeRateLimits, rateLimitRules } from "@/server/rate-limit";
 import { getClientIp } from "@/server/request";
 import { recordAudit } from "@/server/services/audit";
-import { authenticate, registerInvestor } from "@/server/services/auth";
+import { authenticate } from "@/server/services/auth";
 
 export async function loginAction(_previousState: ActionState, formData: FormData): Promise<ActionState> {
   const { locale, messages } = await getI18n();
@@ -54,38 +54,6 @@ export async function loginAction(_previousState: ActionState, formData: FormDat
     redirect(WELCOME_PATH);
   }
   redirect(homePathForRole(user.role));
-}
-
-export async function registerAction(_previousState: ActionState, formData: FormData): Promise<ActionState> {
-  const { locale, messages } = await getI18n();
-  const values = { fullName: readFormText(formData, "fullName"), email: readFormText(formData, "email") };
-  const parsed = getSchemas(locale).registerSchema.safeParse({
-    ...values,
-    password: readFormText(formData, "password"),
-    passwordConfirmation: readFormText(formData, "passwordConfirmation"),
-  });
-  if (!parsed.success) {
-    return validationErrorState(parsed.error, messages.errors.validation, values);
-  }
-
-  const ipAddress = await getClientIp();
-  const rateLimit = await consumeRateLimits([
-    { key: `register:ip:${ipAddress ?? "unknown"}`, rule: rateLimitRules.registerPerIp },
-  ]);
-  if (!rateLimit.allowed) {
-    return rateLimitedState(rateLimit, messages);
-  }
-
-  try {
-    const user = await registerInvestor({ ...parsed.data, ipAddress });
-    await createSession(user.id);
-  } catch (error) {
-    const failure = toErrorState(error, messages);
-    return failure.status === "error" ? { ...failure, values } : failure;
-  }
-
-  // A new account: zero balance, and the welcome popup leads straight to the first deposit.
-  redirect(WELCOME_PATH);
 }
 
 export async function logoutAction(): Promise<void> {

@@ -5,29 +5,30 @@ import { generateInvestorCode } from "@/lib/investor-code";
 import { getDummyPasswordHash, hashPassword, verifyPassword } from "@/server/auth/password";
 import type { SessionUser } from "@/server/auth/session";
 import { getDb } from "@/server/db/client";
-import { isUniqueViolation } from "@/server/db/errors";
+import { INVESTOR_CODE_CONSTRAINT, isUniqueViolation } from "@/server/db/errors";
 import { accounts, users } from "@/server/db/schema";
 import { recordAudit } from "./audit";
 
-type RegisterInput = {
+type CreateInvestorInput = {
   fullName: string;
   email: string;
   password: string;
+  /** Investor ID chosen by the admin; drawn at random when left out. */
+  investorCode?: string;
   ipAddress: string | null;
-  /** Set when an admin creates the account; a self-registration is logged with the investor as actor. */
-  createdByAdminId?: string;
+  createdByAdminId: string;
 };
 
 const MAX_CODE_ATTEMPTS = 5;
-const INVESTOR_CODE_CONSTRAINT = "users_investor_code_unique";
 
 /**
- * Creates the investor and their zero-balance account in one transaction, for a self-registration or an admin.
- * A fresh investor code is drawn per attempt; a code collision aborts the transaction, so it is retried from the
- * outside. `generateCode` is a test hook.
+ * Creates the investor and their zero-balance account in one transaction; only admins create accounts.
+ * Without a chosen investor code a fresh one is drawn per attempt; a collision aborts the transaction, so it is
+ * retried from the outside. A chosen code that is taken fails with `INVESTOR_CODE_TAKEN`. `generateCode` is a test
+ * hook.
  */
-export async function registerInvestor(
-  input: RegisterInput,
+export async function createInvestor(
+  input: CreateInvestorInput,
   generateCode: () => string = generateInvestorCode,
 ): Promise<SessionUser> {
   const passwordHash = await hashPassword(input.password);
@@ -35,7 +36,7 @@ export async function registerInvestor(
   for (let attempt = 1; ; attempt++) {
     try {
       return await getDb().transaction(async (tx) => {
-        const investorCode = generateCode();
+        const investorCode = input.investorCode ?? generateCode();
         const [user] = await tx
           .insert(users)
           .values({
@@ -49,33 +50,26 @@ export async function registerInvestor(
 
         await tx.insert(accounts).values({ userId: user.id });
 
-        await recordAudit(
-          tx,
-          input.createdByAdminId
-            ? {
-                actorUserId: input.createdByAdminId,
-                action: "user.created",
-                entityType: "user",
-                entityId: user.id,
-                metadata: { investorName: user.fullName, investorCode },
-                ipAddress: input.ipAddress,
-              }
-            : {
-                actorUserId: user.id,
-                action: "auth.registered",
-                entityType: "user",
-                entityId: user.id,
-                ipAddress: input.ipAddress,
-              },
-        );
+        await recordAudit(tx, {
+          actorUserId: input.createdByAdminId,
+          action: "user.created",
+          entityType: "user",
+          entityId: user.id,
+          metadata: { investorName: user.fullName, investorCode },
+          ipAddress: input.ipAddress,
+        });
 
         return user;
       });
     } catch (error) {
-      if (isUniqueViolation(error, INVESTOR_CODE_CONSTRAINT) && attempt < MAX_CODE_ATTEMPTS) {
-        continue;
-      }
-      if (isUniqueViolation(error) && !isUniqueViolation(error, INVESTOR_CODE_CONSTRAINT)) {
+      if (isUniqueViolation(error, INVESTOR_CODE_CONSTRAINT)) {
+        if (input.investorCode) {
+          throw new DomainError("INVESTOR_CODE_TAKEN");
+        }
+        if (attempt < MAX_CODE_ATTEMPTS) {
+          continue;
+        }
+      } else if (isUniqueViolation(error)) {
         throw new DomainError("EMAIL_TAKEN");
       }
       throw error;

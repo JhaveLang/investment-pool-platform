@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { InvestorCodeEditor, InvestorCodeSaveBar } from "@/components/admin/investor-code-editor";
 import { InvestorTable } from "@/components/admin/investor-table";
 import { StatementExport } from "@/components/admin/statement-export";
 import { StatusFilter } from "@/components/admin/status-filter";
@@ -91,56 +92,60 @@ export default async function AdminInvestorsPage({ searchParams }: PageProps<"/a
           </>
         }
       />
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-3">
-          <StatusFilter
-            basePath="/admin/investors"
-            current={status}
-            query={{ q: search, month: monthQuery }}
-            options={INVESTOR_LIST_FILTERS.map((filter) => ({
-              value: filter,
-              label: filter === "all" ? text.statusFilter.all : messages.investorStatus[filter],
-            }))}
-          />
-          {/* Its own form, so changing the month keeps the search and the status filter. */}
-          <form method="get" className="flex items-center gap-2">
+      {/* Investor IDs are edited in place in the table; the save button sits beside the month select. */}
+      <InvestorCodeEditor>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <StatusFilter
+              basePath="/admin/investors"
+              current={status}
+              query={{ q: search, month: monthQuery }}
+              options={INVESTOR_LIST_FILTERS.map((filter) => ({
+                value: filter,
+                label: filter === "all" ? text.statusFilter.all : messages.investorStatus[filter],
+              }))}
+            />
+            {/* Its own form, so changing the month keeps the search and the status filter. */}
+            <form method="get" className="flex items-center gap-2">
+              {explicitStatus ? <input type="hidden" name="status" value={status} /> : null}
+              {search ? <input type="hidden" name="q" value={search} /> : null}
+              <label className="flex items-center gap-2">
+                <span className="label-caps text-muted">{text.investorMonth.label}</span>
+                <AutoSubmitSelect name="month" defaultValue={month}>
+                  {choices.map((choice) => (
+                    <option key={choice} value={choice}>
+                      {format.month(choice)}
+                    </option>
+                  ))}
+                </AutoSubmitSelect>
+              </label>
+            </form>
+            <InvestorCodeSaveBar />
+          </div>
+          <form method="get" role="search" className="flex gap-2">
             {explicitStatus ? <input type="hidden" name="status" value={status} /> : null}
-            {search ? <input type="hidden" name="q" value={search} /> : null}
-            <label className="flex items-center gap-2">
-              <span className="label-caps text-muted">{text.investorMonth.label}</span>
-              <AutoSubmitSelect name="month" defaultValue={month}>
-                {choices.map((choice) => (
-                  <option key={choice} value={choice}>
-                    {format.month(choice)}
-                  </option>
-                ))}
-              </AutoSubmitSelect>
-            </label>
+            {monthQuery ? <input type="hidden" name="month" value={monthQuery} /> : null}
+            <input
+              type="search"
+              name="q"
+              defaultValue={search}
+              aria-label={text.searchLabel}
+              placeholder={text.searchPlaceholder}
+              className={cn(inputStyles, "w-56")}
+            />
+            <button type="submit" className={buttonStyles({ variant: "secondary" })}>
+              {text.searchButton}
+            </button>
           </form>
         </div>
-        <form method="get" role="search" className="flex gap-2">
-          {explicitStatus ? <input type="hidden" name="status" value={status} /> : null}
-          {monthQuery ? <input type="hidden" name="month" value={monthQuery} /> : null}
-          <input
-            type="search"
-            name="q"
-            defaultValue={search}
-            aria-label={text.searchLabel}
-            placeholder={text.searchPlaceholder}
-            className={cn(inputStyles, "w-56")}
-          />
-          <button type="submit" className={buttonStyles({ variant: "secondary" })}>
-            {text.searchButton}
-          </button>
-        </form>
-      </div>
-      <p className="mb-3 text-xs text-subtle">{text.investorMonth.hint}</p>
-      <Card>
-        <InvestorTable investors={result.rows} month={month} statements={statements} />
-        {result.totalCount > 0 ? (
-          <Pagination result={result} basePath="/admin/investors" query={{ q: search, status, month: monthQuery }} />
-        ) : null}
-      </Card>
+        <p className="mb-3 text-xs text-subtle">{text.investorMonth.hint}</p>
+        <Card>
+          <InvestorTable investors={result.rows} month={month} statements={statements} />
+          {result.totalCount > 0 ? (
+            <Pagination result={result} basePath="/admin/investors" query={{ q: search, status, month: monthQuery }} />
+          ) : null}
+        </Card>
+      </InvestorCodeEditor>
     </>
   );
 }

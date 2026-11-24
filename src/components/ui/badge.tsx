@@ -3,7 +3,7 @@ import { cn } from "@/lib/cn";
 
 const toneStyles = {
   neutral: "border-line-strong bg-overlay text-muted",
-  success: "border-accent-400/25 bg-accent-400/10 text-accent-400",
+  success: "border-gain/25 bg-gain/10 text-gain",
   warning: "border-warn/25 bg-warn/10 text-warn",
   danger: "border-loss/25 bg-loss/10 text-loss",
   info: "border-indigo/25 bg-indigo/10 text-indigo",

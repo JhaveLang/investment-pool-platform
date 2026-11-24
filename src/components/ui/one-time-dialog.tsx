@@ -49,7 +49,7 @@ export function OneTimeDialog({ param, title, description, dismissLabel, action,
           close();
         }
       }}
-      className="m-auto max-h-[calc(100dvh-2rem)] w-[min(30rem,calc(100vw-2rem))] rounded-2xl border border-white/10 bg-overlay text-left text-fg shadow-[0_24px_48px_-12px_rgba(0,0,0,0.7)] backdrop:bg-black/60 backdrop:backdrop-blur-sm"
+      className="m-auto max-h-[calc(100dvh-2rem)] w-[min(30rem,calc(100vw-2rem))] rounded-2xl border border-line bg-surface text-left text-fg shadow-[0_24px_48px_-12px_rgba(29,22,33,0.22)] backdrop:bg-black/40 backdrop:backdrop-blur-sm"
     >
       <div className="flex items-start justify-between gap-4 px-6 pt-6 pb-3">
         <div className="min-w-0">

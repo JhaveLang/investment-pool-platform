@@ -243,7 +243,7 @@ export function NotificationBell() {
         ) : null}
       </button>
       {open ? (
-        <div className="absolute inset-x-4 top-full z-50 mt-2 rounded-2xl border border-white/10 bg-overlay p-2 shadow-[0_16px_32px_-8px_rgba(0,0,0,0.6)] lg:inset-x-auto lg:right-0 lg:w-[22rem]">
+        <div className="absolute inset-x-4 top-full z-50 mt-2 rounded-2xl border border-line bg-surface p-2 shadow-[0_16px_32px_-8px_rgba(29,22,33,0.16)] lg:inset-x-auto lg:right-0 lg:w-[22rem]">
           <div className="flex items-center justify-between gap-3 px-2 pt-1 pb-2">
             <p className="font-display text-[15px] font-semibold text-fg">{text.title}</p>
             <span className="flex items-center gap-1.5 text-xs text-muted">

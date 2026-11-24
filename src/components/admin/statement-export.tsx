@@ -5,6 +5,7 @@ import { Popup } from "@/components/ui/popup";
 import { Select } from "@/components/ui/select";
 import { getI18n } from "@/i18n/server";
 import type { IsoMonth } from "@/lib/calendar";
+import { keepsPage } from "@/lib/keeps-page";
 
 type StatementExportProps = {
   /** The CSV route. */
@@ -53,7 +54,8 @@ export async function StatementExport({
         </>
       }
     >
-      <form action={action} method="get" className="space-y-4">
+      {/* A download: the page stays, so unsaved changes on it don't hold the export. */}
+      <form action={action} method="get" className="space-y-4" {...keepsPage}>
         {Object.entries(hidden).map(([name, value]) =>
           value ? <input key={name} type="hidden" name={name} value={value} /> : null,
         )}

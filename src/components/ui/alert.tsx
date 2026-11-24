@@ -9,8 +9,10 @@ const toneStyles = {
   warning: "border-warn/35 bg-warn/8 text-fg [--alert-dot:var(--color-warn)]",
 } as const;
 
+export type AlertTone = keyof typeof toneStyles;
+
 type AlertProps = {
-  tone: keyof typeof toneStyles;
+  tone: AlertTone;
   children: ReactNode;
   className?: string;
 };

@@ -12,7 +12,7 @@ function isActive(href: string, pathname: string): boolean {
   return href === "/" ? pathname === "/" : pathname.startsWith(href);
 }
 
-/** The website's tabs from `md`; the current one is underlined in emerald. */
+/** The website's tabs from `md`; the current one is underlined in plum. */
 export function PublicNav({ items, label }: { items: PublicNavItem[]; label: string }) {
   const pathname = usePathname();
   return (
@@ -69,7 +69,7 @@ export function PublicMobileMenu({ items, label, children }: PublicMobileMenuPro
       </summary>
       <div
         onClick={closeMenu}
-        className="absolute inset-x-0 top-full border-b border-line bg-canvas px-4 pt-2 pb-5 shadow-[0_16px_32px_-8px_rgba(0,0,0,0.6)]"
+        className="absolute inset-x-0 top-full border-b border-line bg-canvas px-4 pt-2 pb-5 shadow-[0_16px_32px_-8px_rgba(29,22,33,0.16)]"
       >
         <nav aria-label={label} className="flex flex-col">
           {items.map((item) => {

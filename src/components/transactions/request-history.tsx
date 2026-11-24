@@ -34,7 +34,7 @@ export async function DepositHistory({ deposits, emptyText }: { deposits: Recent
               </div>
             </div>
             <div className="flex shrink-0 flex-col items-end gap-1">
-              <span className="amount text-sm font-bold text-accent-400">
+              <span className="amount text-sm font-bold text-gain">
                 {format.signedCurrency(deposit.amountCents)}
               </span>
               {deposit.feeCents > 0 ? (

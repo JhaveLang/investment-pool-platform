@@ -15,6 +15,7 @@ import { Icon } from "@/components/ui/icon";
 import { DeltaChip, StatCard } from "@/components/ui/stat-card";
 import { getI18n, pageMetadata } from "@/i18n/server";
 import { addDays, todayIsoDate } from "@/lib/calendar";
+import { cn } from "@/lib/cn";
 import { formatIsoDate } from "@/lib/format";
 import { WELCOME_PARAM } from "@/lib/onboarding";
 import { firstParam } from "@/lib/pagination";
@@ -182,7 +183,12 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
           <div className="flex items-end justify-between gap-3 text-xs">
             <div>
               <p className="label-caps text-muted">{text.sumReturns}</p>
-              <p className="amount text-[13px] font-semibold text-accent-400">
+              <p
+                className={cn(
+                  "amount text-[13px] font-semibold",
+                  overview.totalReturnsCents < 0 ? "text-loss" : "text-gain",
+                )}
+              >
                 {format.signedCurrency(overview.totalReturnsCents)}
               </p>
             </div>
@@ -225,7 +231,12 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
             </div>
             <div>
               <dt className="label-caps text-muted">{text.yourReturn}</dt>
-              <dd className="amount mt-0.5 text-[13px] font-bold text-accent-400">
+              <dd
+                className={cn(
+                  "amount mt-0.5 text-[13px] font-bold",
+                  (latestReturn?.amountCents ?? 0) < 0 ? "text-loss" : "text-gain",
+                )}
+              >
                 {latestReturn ? format.signedCurrency(latestReturn.amountCents) : messages.common.emptyValue}
               </dd>
             </div>

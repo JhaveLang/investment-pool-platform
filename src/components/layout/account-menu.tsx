@@ -25,7 +25,7 @@ export function AccountMenu({ avatar, children }: { avatar: ReactNode; children:
       >
         {avatar}
       </summary>
-      <div className="absolute top-full right-0 z-50 mt-2 w-64 rounded-2xl border border-white/10 bg-overlay p-3 shadow-[0_16px_32px_-8px_rgba(0,0,0,0.6)]">
+      <div className="absolute top-full right-0 z-50 mt-2 w-64 rounded-2xl border border-line bg-surface p-3 shadow-[0_16px_32px_-8px_rgba(29,22,33,0.16)]">
         {children}
       </div>
     </details>

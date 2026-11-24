@@ -60,7 +60,7 @@ export function ConfirmDialog({
       ref={dialogRef}
       aria-labelledby={titleId}
       aria-describedby={descriptionId}
-      className="m-auto w-[min(26rem,calc(100vw-2rem))] rounded-2xl border border-white/10 bg-overlay p-5 text-left text-fg shadow-[0_24px_48px_-12px_rgba(0,0,0,0.7)] backdrop:bg-black/60 backdrop:backdrop-blur-sm"
+      className="m-auto w-[min(26rem,calc(100vw-2rem))] rounded-2xl border border-line bg-surface p-5 text-left text-fg shadow-[0_24px_48px_-12px_rgba(29,22,33,0.22)] backdrop:bg-black/40 backdrop:backdrop-blur-sm"
     >
       <h2 id={titleId} className="font-display text-lg font-semibold tracking-tight text-fg">
         {title}
@@ -69,13 +69,7 @@ export function ConfirmDialog({
         {children}
       </div>
       <div className="mt-5 flex flex-wrap justify-end gap-2">
-        {/* The dialog already uses the "overlay" surface, so Cancel takes the next layer up to stay visible. */}
-        <Button
-          variant="secondary"
-          autoFocus
-          onClick={() => dialogRef.current?.close()}
-          className="bg-highest hover:bg-highest/70"
-        >
+        <Button variant="secondary" autoFocus onClick={() => dialogRef.current?.close()}>
           {cancelLabel}
         </Button>
         <Button variant="danger" onClick={onConfirm}>

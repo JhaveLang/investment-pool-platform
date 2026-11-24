@@ -7,7 +7,7 @@ import { isNavItemActive, type NavItem } from "@/config/navigation";
 import { useMessages } from "@/i18n/client";
 import { cn } from "@/lib/cn";
 
-/** The sidebar's vertical navigation; the active entry is filled emerald. */
+/** The sidebar's vertical navigation; the active entry is filled plum. */
 export function NavLinks({ items, className }: { items: NavItem[]; className?: string }) {
   const pathname = usePathname();
   const messages = useMessages();

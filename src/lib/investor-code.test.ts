@@ -30,8 +30,13 @@ describe("generateInvestorCode", () => {
 });
 
 describe("INVESTOR_CODE_PATTERN", () => {
-  it("rejects I/O and wrong shapes", () => {
-    for (const bad of ["01IO01", "1GR01", "01GR1", "01gr01", "01GR012"]) {
+  it("accepts 6 to 20 upper-case letters, digits and hyphens", () => {
+    for (const good of ["01GR01", "123456", "INV-0042", "01GR012", "A".repeat(20)]) {
+      expect(INVESTOR_CODE_PATTERN.test(good)).toBe(true);
+    }
+  });
+  it("rejects too short, too long, lower-case and other characters", () => {
+    for (const bad of ["", "12345", "A".repeat(21), "01gr01", "07KM 42", "INV_0042"]) {
       expect(INVESTOR_CODE_PATTERN.test(bad)).toBe(false);
     }
   });

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { getI18n } from "@/i18n/server";
 import { cn } from "@/lib/cn";
 
-/** Three rising columns in emerald on the highest surface: the pool growing month by month. */
+/** Three rising columns in plum on the highest surface: the pool growing month by month. */
 export function BrandMark({ className }: { className?: string }) {
   return (
     <span aria-hidden className={cn("grid shrink-0 place-items-center rounded-lg bg-highest", className)}>
@@ -28,7 +28,7 @@ export async function Brand({ href = "/", size = "md", compactOnMobile = false }
     <Link
       href={href}
       className={cn(
-        "inline-flex items-center font-display font-bold tracking-tight text-fg",
+        "inline-flex items-center font-display font-bold tracking-tight text-accent-400",
         size === "lg" ? "gap-3.5 text-2xl" : "gap-2.5 text-lg",
       )}
     >

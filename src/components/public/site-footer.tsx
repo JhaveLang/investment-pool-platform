@@ -49,8 +49,8 @@ export async function SiteFooter() {
           ))}
         </nav>
       </div>
-      <div className="border-t border-line">
-        <p className={cn(publicContainer, "py-5 text-xs text-subtle")}>
+      <div className="bg-footer">
+        <p className={cn(publicContainer, "py-5 text-xs text-white/80")}>
           {text.copyright(SITE.copyrightSince, Number(todayIsoDate().slice(0, 4)))}
         </p>
       </div>

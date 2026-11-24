@@ -5,8 +5,13 @@ import { isIsoMonth } from "@/lib/calendar";
 import { PAYMENT_METHODS } from "@/lib/fees";
 import { getFormatter } from "@/lib/format";
 import { isValidIban, normalizeIban } from "@/lib/iban";
+import { INVESTOR_CODE_MAX_LENGTH, INVESTOR_CODE_MIN_LENGTH, INVESTOR_CODE_PATTERN } from "@/lib/investor-code";
+import { MAX_NEWS_TEXT_LENGTH } from "@/lib/news";
 import { MAX_TRANSACTION_CENTS, MIN_TRANSACTION_CENTS, parseAmountToCents, parsePercentToPpm } from "@/lib/money";
 import { MAX_RATE_PPM, MIN_RATE_PPM_EXCLUSIVE } from "@/lib/returns";
+
+/** At most this many investor IDs are saved at once from the investor list (a page shows 20). */
+export const MAX_INVESTOR_CODE_CHANGES = 50;
 
 /** Wallet or exchange deposit addresses: 20–128 letters and digits, plus ":._-" for tags and URIs. */
 const WALLET_ADDRESS_PATTERN = /^[A-Za-z0-9][A-Za-z0-9:._-]{19,127}$/;
@@ -34,6 +39,23 @@ function createSchemas(locale: Locale) {
     .max(128, { error: text.passwordTooLong });
 
   const fullNameSchema = z.string().trim().min(2, { error: text.nameTooShort }).max(120, { error: text.nameTooLong });
+
+  /** Investor ID like 01GR01 or INV-0042; lower-case input is accepted and stored upper-case. */
+  const investorCodeSchema = z
+    .string()
+    .trim()
+    .toUpperCase()
+    .min(1, { error: text.required })
+    .min(INVESTOR_CODE_MIN_LENGTH, { error: text.investorCodeTooShort(INVESTOR_CODE_MIN_LENGTH) })
+    .max(INVESTOR_CODE_MAX_LENGTH, { error: text.investorCodeTooLong(INVESTOR_CODE_MAX_LENGTH) })
+    .regex(INVESTOR_CODE_PATTERN, { error: text.invalidInvestorCode });
+
+  /** Left empty, a random investor ID is assigned. */
+  const optionalInvestorCodeSchema = z
+    .string()
+    .trim()
+    .transform((code) => code || undefined)
+    .pipe(investorCodeSchema.optional());
 
   /** Accepts the locale's notation ("1.234,56" in German, "1,234.56" in English) and yields integer cents. */
   const amountSchema = z.string().transform((value, context) => {
@@ -93,10 +115,12 @@ function createSchemas(locale: Locale) {
       password: z.string().min(1, { error: text.required }).max(128, { error: text.passwordTooLong }),
     }),
 
-    registerSchema: z
+    /** An admin creates an investor with a starting password. */
+    createInvestorSchema: z
       .object({
         fullName: fullNameSchema,
         email: emailSchema,
+        investorCode: optionalInvestorCodeSchema,
         password: newPasswordSchema,
         passwordConfirmation: z.string(),
       })
@@ -124,7 +148,25 @@ function createSchemas(locale: Locale) {
       userId: z.uuid({ error: text.invalidRequest }),
       fullName: fullNameSchema,
       email: emailSchema,
+      investorCode: investorCodeSchema,
     }),
+
+    /** Investor IDs edited in the investor list, saved together; the same new ID twice is marked on both rows. */
+    adminInvestorCodesSchema: z
+      .array(z.object({ userId: z.uuid({ error: text.invalidRequest }), investorCode: investorCodeSchema }))
+      .min(1, { error: text.invalidRequest })
+      .max(MAX_INVESTOR_CODE_CHANGES, { error: text.invalidRequest })
+      .superRefine((changes, context) => {
+        const codeCounts = new Map<string, number>();
+        for (const { investorCode } of changes) {
+          codeCounts.set(investorCode, (codeCounts.get(investorCode) ?? 0) + 1);
+        }
+        changes.forEach(({ investorCode }, index) => {
+          if (codeCounts.get(investorCode)! > 1) {
+            context.addIssue({ code: "custom", message: text.investorCodeTwice, path: [index, "investorCode"] });
+          }
+        });
+      }),
 
     adminSetPasswordSchema: z
       .object({
@@ -143,6 +185,19 @@ function createSchemas(locale: Locale) {
       status: z.enum(["active", "deactivated"], { error: text.invalidRequest }),
       note: optionalNoteSchema,
     }),
+
+    /** A notice for the public News page, written in German; DeepL translates it to English when it is saved. */
+    newsEntrySchema: z.object({
+      publishedOn: z.iso.date({ error: text.invalidDate }),
+      textDe: z
+        .string()
+        .trim()
+        .min(1, { error: text.required })
+        .max(MAX_NEWS_TEXT_LENGTH, { error: text.newsTextTooLong(MAX_NEWS_TEXT_LENGTH) }),
+      visible: z.boolean(),
+    }),
+
+    newsIdSchema: z.uuid({ error: text.invalidRequest }),
 
     depositSchema: z.object({
       amount: amountSchema,

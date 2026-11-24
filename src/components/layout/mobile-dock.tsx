@@ -31,7 +31,7 @@ function DockTab({ href, icon, label, isActive }: { href: string; icon: IconName
   );
 }
 
-/** Fixed bottom navigation on phones, with an emerald dot under the active tab. */
+/** Fixed bottom navigation on phones, with a plum dot under the active tab. */
 export function MobileDock({ items, moreItems = [] }: MobileDockProps) {
   const pathname = usePathname();
   const messages = useMessages();
@@ -63,7 +63,7 @@ export function MobileDock({ items, moreItems = [] }: MobileDockProps) {
           />
           <div
             id="mobile-more-sheet"
-            className="absolute inset-x-0 bottom-0 rounded-t-3xl border-t border-line bg-overlay px-4 pt-3 pb-[calc(env(safe-area-inset-bottom)+5.5rem)] shadow-[0_-16px_32px_-8px_rgba(0,0,0,0.6)]"
+            className="absolute inset-x-0 bottom-0 rounded-t-3xl border-t border-line bg-surface px-4 pt-3 pb-[calc(env(safe-area-inset-bottom)+5.5rem)] shadow-[0_-16px_32px_-8px_rgba(29,22,33,0.16)]"
           >
             <span aria-hidden className="mx-auto mb-4 block h-1 w-10 rounded-full bg-line-strong" />
             <nav aria-label={messages.nav.more} className="flex flex-col gap-1">
@@ -91,7 +91,7 @@ export function MobileDock({ items, moreItems = [] }: MobileDockProps) {
 
       <nav
         aria-label={messages.nav.mainNavigation}
-        className="pb-safe fixed inset-x-0 bottom-0 z-50 border-t border-white/[0.06] bg-well/90 shadow-[0_-4px_16px_rgba(0,0,0,0.35)] backdrop-blur-xl lg:hidden"
+        className="pb-safe fixed inset-x-0 bottom-0 z-50 border-t border-line bg-surface/90 shadow-[0_-4px_16px_rgba(29,22,33,0.08)] backdrop-blur-xl lg:hidden"
       >
         <div className="flex h-16 items-center justify-around px-1">
           {items.map((item) => (

@@ -16,6 +16,40 @@ type FormFieldProps = ComponentProps<"input"> & {
   hint?: string;
 };
 
+type TextAreaFieldProps = ComponentProps<"textarea"> & {
+  name: string;
+  label: string;
+  error?: string;
+  hint?: string;
+};
+
+/** Label + textarea + hint/error, like `FormField` for longer text. */
+export function TextAreaField({ name, label, error, hint, id, className, ...textareaProps }: TextAreaFieldProps) {
+  const inputId = id ?? `field-${name}`;
+  const descriptionId = error || hint ? `${inputId}-description` : undefined;
+
+  return (
+    <div className={className}>
+      <label htmlFor={inputId} className={labelStyles}>
+        {label}
+      </label>
+      <textarea
+        id={inputId}
+        name={name}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={descriptionId}
+        className={cn(inputStyles, "min-h-24 resize-y leading-relaxed")}
+        {...textareaProps}
+      />
+      {descriptionId ? (
+        <p id={descriptionId} className={cn("mt-1.5 text-[13px]", error ? "text-loss" : "text-subtle")}>
+          {error ?? hint}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 /** Label + input + hint/error, wired up with the right ARIA attributes. */
 export function FormField({ name, label, error, hint, id, className, ...inputProps }: FormFieldProps) {
   const inputId = id ?? `field-${name}`;

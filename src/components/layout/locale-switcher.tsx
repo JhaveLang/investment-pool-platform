@@ -2,6 +2,7 @@ import { setLocaleAction } from "@/actions/locale";
 import { LOCALE_LABELS, LOCALES } from "@/i18n/config";
 import { getI18n } from "@/i18n/server";
 import { cn } from "@/lib/cn";
+import { keepsPage } from "@/lib/keeps-page";
 
 /** DE | EN toggle. A plain form posting to a Server Action, so it works without client JavaScript. */
 export async function LocaleSwitcher() {
@@ -10,6 +11,8 @@ export async function LocaleSwitcher() {
   return (
     <form
       action={setLocaleAction}
+      // Re-renders the current page in the new language; unsaved changes on it survive.
+      {...keepsPage}
       role="group"
       aria-label={messages.nav.language}
       className="flex rounded-full bg-surface p-1 ring-1 ring-line ring-inset"

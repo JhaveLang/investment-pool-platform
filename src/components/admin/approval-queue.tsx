@@ -137,7 +137,7 @@ async function GroupCard({ group }: { group: QueueGroup<QueueItem> }) {
               </span>
               <span
                 aria-hidden
-                className="grid size-8 shrink-0 place-items-center rounded-full bg-accent-400 font-display text-sm font-bold text-accent-ink shadow-[0_0_0_4px_rgba(78,222,163,0.15)]"
+                className="grid size-8 shrink-0 place-items-center rounded-full bg-accent-400 font-display text-sm font-bold text-accent-ink shadow-[0_0_0_4px_rgba(86,51,100,0.15)]"
               >
                 {count}
               </span>
@@ -146,7 +146,7 @@ async function GroupCard({ group }: { group: QueueGroup<QueueItem> }) {
               {depositRows.length > 0 ? (
                 <span className="flex items-center justify-between gap-3">
                   <span className="text-[13px] text-muted">{text.deposits(depositRows.length)}</span>
-                  <span className="amount font-display text-lg font-bold text-accent-400">
+                  <span className="amount font-display text-lg font-bold text-gain">
                     {format.signedCurrency(total(depositRows))}
                   </span>
                 </span>
@@ -255,7 +255,7 @@ async function DepositCard({ deposit, popIndex }: { deposit: DepositReviewRow; p
           <p className="text-[13px] text-muted">{text.incomingPayment}</p>
           <p className="truncate text-xs text-subtle">{messages.paymentMethods[deposit.method]}</p>
         </div>
-        <span className="amount font-display text-xl font-bold text-accent-400">
+        <span className="amount font-display text-xl font-bold text-gain">
           {format.signedCurrency(deposit.amountCents)}
         </span>
       </div>
