@@ -1,4 +1,4 @@
-import type { ComponentProps } from "react";
+import type { ComponentProps, ReactNode } from "react";
 import { cn } from "@/lib/cn";
 
 export const inputStyles = cn(
@@ -14,6 +14,8 @@ type FormFieldProps = ComponentProps<"input"> & {
   label: string;
   error?: string;
   hint?: string;
+  /** A button inside the input's right edge, e.g. to show a password. */
+  trailing?: ReactNode;
 };
 
 type TextAreaFieldProps = ComponentProps<"textarea"> & {
@@ -51,7 +53,7 @@ export function TextAreaField({ name, label, error, hint, id, className, ...text
 }
 
 /** Label + input + hint/error, wired up with the right ARIA attributes. */
-export function FormField({ name, label, error, hint, id, className, ...inputProps }: FormFieldProps) {
+export function FormField({ name, label, error, hint, trailing, id, className, ...inputProps }: FormFieldProps) {
   const inputId = id ?? `field-${name}`;
   const descriptionId = error || hint ? `${inputId}-description` : undefined;
 
@@ -60,14 +62,17 @@ export function FormField({ name, label, error, hint, id, className, ...inputPro
       <label htmlFor={inputId} className={labelStyles}>
         {label}
       </label>
-      <input
-        id={inputId}
-        name={name}
-        aria-invalid={error ? true : undefined}
-        aria-describedby={descriptionId}
-        className={inputStyles}
-        {...inputProps}
-      />
+      <div className="relative">
+        <input
+          id={inputId}
+          name={name}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={descriptionId}
+          className={cn(inputStyles, trailing ? "pr-11" : undefined)}
+          {...inputProps}
+        />
+        {trailing}
+      </div>
       {descriptionId ? (
         <p id={descriptionId} className={cn("mt-1.5 text-[13px]", error ? "text-loss" : "text-subtle")}>
           {error ?? hint}

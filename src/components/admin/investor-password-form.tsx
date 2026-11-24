@@ -2,7 +2,7 @@
 
 import { useActionState } from "react";
 import { ActionStateAlert } from "@/components/ui/alert";
-import { FormField } from "@/components/ui/form-field";
+import { PasswordField } from "@/components/ui/password-field";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { useMessages } from "@/i18n/client";
 import { fieldErrorsOf, idleActionState, type ActionState } from "@/lib/action-state";
@@ -21,17 +21,15 @@ export function InvestorPasswordForm({ action }: InvestorPasswordFormProps) {
     // Keyed on success so the password fields are emptied once the new password is set.
     <form key={state.status === "success" ? "set" : "editing"} action={formAction} noValidate className="space-y-5">
       <ActionStateAlert state={state} />
-      <FormField
+      <PasswordField
         name="newPassword"
-        type="password"
         label={text.newPassword}
         autoComplete="new-password"
         required
         error={fieldErrors.newPassword}
       />
-      <FormField
+      <PasswordField
         name="newPasswordConfirmation"
-        type="password"
         label={text.newPasswordConfirmation}
         autoComplete="new-password"
         required

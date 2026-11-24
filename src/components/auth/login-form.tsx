@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { loginAction } from "@/actions/auth";
 import { ActionStateAlert } from "@/components/ui/alert";
 import { FormField } from "@/components/ui/form-field";
+import { PasswordField } from "@/components/ui/password-field";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { useMessages } from "@/i18n/client";
 import { fieldErrorsOf, idleActionState, submittedValuesOf } from "@/lib/action-state";
@@ -27,9 +28,8 @@ export function LoginForm() {
         defaultValue={values.email}
         error={fieldErrors.email}
       />
-      <FormField
+      <PasswordField
         name="password"
-        type="password"
         label={text.password}
         autoComplete="current-password"
         required

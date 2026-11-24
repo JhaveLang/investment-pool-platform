@@ -831,6 +831,8 @@ export const en: Messages = {
     quoted: (value: string) => `“${value}”`,
     showingRange: (from: number, to: number, total: number) => `Showing ${from}–${to} of ${total}`,
     close: "Close",
+    showPassword: "Show password",
+    hidePassword: "Hide password",
   },
 
   errors: {

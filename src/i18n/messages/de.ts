@@ -844,6 +844,8 @@ export const de = {
     quoted: (value: string) => `„${value}“`,
     showingRange: (from: number, to: number, total: number) => `Zeige ${from}–${to} von ${total}`,
     close: "Schließen",
+    showPassword: "Passwort anzeigen",
+    hidePassword: "Passwort verbergen",
   },
 
   errors: {

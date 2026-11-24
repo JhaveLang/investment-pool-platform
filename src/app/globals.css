@@ -87,6 +87,11 @@
     outline: 2px solid var(--color-accent-400);
     outline-offset: 2px;
   }
+
+  /* Edge's own show-password eye; ours (PasswordField) works in every browser. */
+  ::-ms-reveal {
+    display: none;
+  }
 }
 
 /* Amounts line up vertically in tables and lists. */

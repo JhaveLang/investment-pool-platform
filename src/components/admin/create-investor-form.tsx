@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { createInvestorAction } from "@/actions/account";
 import { ActionStateAlert } from "@/components/ui/alert";
 import { FormField } from "@/components/ui/form-field";
+import { PasswordField } from "@/components/ui/password-field";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { useMessages } from "@/i18n/client";
 import { fieldErrorsOf, idleActionState, submittedValuesOf } from "@/lib/action-state";
@@ -48,18 +49,16 @@ export function CreateInvestorForm() {
         hint={text.investorCodeHint}
         error={fieldErrors.investorCode}
       />
-      <FormField
+      <PasswordField
         name="password"
-        type="password"
         label={text.password}
         autoComplete="new-password"
         required
         hint={messages.auth.passwordHint}
         error={fieldErrors.password}
       />
-      <FormField
+      <PasswordField
         name="passwordConfirmation"
-        type="password"
         label={text.passwordConfirmation}
         autoComplete="new-password"
         required
