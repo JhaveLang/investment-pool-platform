@@ -17,7 +17,9 @@ export function groupNewsByYear<Item extends { date: IsoDate }>(items: readonly 
   const years = new Map<string, Item[]>();
   for (const item of items) {
     const year = item.date.slice(0, 4);
-    years.set(year, [...(years.get(year) ?? []), item]);
+    const yearItems = years.get(year) ?? [];
+    yearItems.push(item);
+    years.set(year, yearItems);
   }
   return [...years];
 }

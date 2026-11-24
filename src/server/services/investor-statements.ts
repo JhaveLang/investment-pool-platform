@@ -8,7 +8,7 @@ import {
   monthsBetween,
   parseExportMonthRange,
 } from "@/lib/statement-csv";
-import { buildMonthStatement, firstStatementMonth } from "@/lib/statements";
+import { buildMonthStatements, firstStatementMonth } from "@/lib/statements";
 import { getDb } from "@/server/db/client";
 import type { InvestorStatus } from "@/server/db/schema";
 import { getInvestorDetail, listInvestorsForExport } from "@/server/queries/admin";
@@ -47,7 +47,7 @@ export async function exportInvestorStatements(
       investorCode: investor.investorCode,
       fullName: investor.fullName,
       statusLabel: messages.investorStatus[investor.deactivatedAt ? "deactivated" : "active"],
-      statements: months.map((month) => buildMonthStatement(entries, movements, month)),
+      statements: buildMonthStatements(entries, movements, months),
     };
   });
   const csv = buildInvestorsStatementCsv(rows, months, messages.csv, format, CSV_DELIMITERS[locale]);
@@ -78,7 +78,7 @@ export async function exportInvestorStatement(input: ExportContext & { userId: s
   if (!range) {
     return "invalid-range";
   }
-  const statements = monthsBetween(range).map((month) => buildMonthStatement(entries, movements, month));
+  const statements = buildMonthStatements(entries, movements, monthsBetween(range));
   const csv = buildInvestorStatementCsv(investor, statements, messages.csv, format, CSV_DELIMITERS[locale]);
 
   await recordAudit(getDb(), {

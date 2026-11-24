@@ -1,9 +1,9 @@
 import "server-only";
 import { randomBytes } from "node:crypto";
-import { eq } from "drizzle-orm";
+import { asc, eq, inArray, sql } from "drizzle-orm";
 import { DomainError } from "@/lib/errors";
 import type { DbTransaction } from "@/server/db/client";
-import { accounts, ledgerEntries, type Account, type LedgerEntry, type LedgerEntryType } from "@/server/db/schema";
+import { accounts, ledgerEntries, type Account, type LedgerEntryType } from "@/server/db/schema";
 
 /** Locks the investor's account row until the surrounding transaction ends (SELECT … FOR UPDATE). */
 export async function lockAccountForUser(tx: DbTransaction, userId: string): Promise<Account> {
@@ -29,26 +29,37 @@ type LedgerPosting = {
 } & LedgerSource;
 
 /**
- * The single code path that changes a balance. It locks the account, rejects any
- * posting that would overdraw it, appends the immutable ledger entry with the
- * resulting balance and updates the running balance, all within the caller's
- * transaction, so concurrent requests are serialised per account.
+ * The single code path that changes a balance. It locks the accounts (in id order), rejects any
+ * posting that would overdraw one, appends the immutable ledger entries with the resulting
+ * balances and updates the running balances, all within the caller's transaction, so
+ * concurrent requests are serialised per account. Postings to the same account apply in the
+ * given order. A batch takes three queries however many accounts it touches.
  */
-export async function postLedgerEntry(tx: DbTransaction, posting: LedgerPosting): Promise<LedgerEntry> {
-  const [account] = await tx.select().from(accounts).where(eq(accounts.id, posting.accountId)).for("update");
-  if (!account) {
-    throw new DomainError("ACCOUNT_MISSING");
+export async function postLedgerEntries(tx: DbTransaction, postings: readonly LedgerPosting[]): Promise<void> {
+  if (postings.length === 0) {
+    return;
   }
+  const accountIds = [...new Set(postings.map((posting) => posting.accountId))];
+  const locked = await tx
+    .select({ id: accounts.id, balanceCents: accounts.balanceCents })
+    .from(accounts)
+    .where(inArray(accounts.id, accountIds))
+    .orderBy(asc(accounts.id))
+    .for("update");
+  const balances = new Map(locked.map((account) => [account.id, account.balanceCents]));
 
-  const balanceAfterCents = account.balanceCents + posting.amountCents;
-  if (balanceAfterCents < 0) {
-    throw new DomainError("INSUFFICIENT_FUNDS");
-  }
-
-  const [entry] = await tx
-    .insert(ledgerEntries)
-    .values({
-      accountId: account.id,
+  const entries = postings.map((posting) => {
+    const balanceCents = balances.get(posting.accountId);
+    if (balanceCents === undefined) {
+      throw new DomainError("ACCOUNT_MISSING");
+    }
+    const balanceAfterCents = balanceCents + posting.amountCents;
+    if (balanceAfterCents < 0) {
+      throw new DomainError("INSUFFICIENT_FUNDS");
+    }
+    balances.set(posting.accountId, balanceAfterCents);
+    return {
+      accountId: posting.accountId,
       entryType: posting.entryType,
       amountCents: posting.amountCents,
       balanceAfterCents,
@@ -56,15 +67,23 @@ export async function postLedgerEntry(tx: DbTransaction, posting: LedgerPosting)
       withdrawalId: posting.withdrawalId ?? null,
       returnPeriodId: posting.returnPeriodId ?? null,
       createdByUserId: posting.createdByUserId,
-    })
-    .returning();
+    };
+  });
+  await tx.insert(ledgerEntries).values(entries);
 
+  // Parameters arrive untyped, so they are cast: a CASE of untyped values would be text.
+  const newBalances = sql.join(
+    [...balances].map(([accountId, balanceCents]) => sql`when ${accountId}::uuid then ${balanceCents}::bigint`),
+    sql` `,
+  );
   await tx
     .update(accounts)
-    .set({ balanceCents: balanceAfterCents, updatedAt: new Date() })
-    .where(eq(accounts.id, account.id));
+    .set({ balanceCents: sql`case ${accounts.id} ${newBalances} end`, updatedAt: new Date() })
+    .where(inArray(accounts.id, accountIds));
+}
 
-  return entry;
+export async function postLedgerEntry(tx: DbTransaction, posting: LedgerPosting): Promise<void> {
+  await postLedgerEntries(tx, [posting]);
 }
 
 // Unambiguous characters only (no 0/O, 1/I). 32 symbols divide 256 evenly, so there is no modulo bias.

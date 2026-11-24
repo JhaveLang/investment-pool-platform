@@ -1,5 +1,5 @@
 import type { DepositStatus, WithdrawalStatus } from "@/server/db/schema";
-import { addMonths, firstDayOfMonth, lastDayOfMonth, type IsoDate, type IsoMonth } from "./calendar";
+import { addMonths, monthOf, type IsoDate, type IsoMonth } from "./calendar";
 
 /**
  * Monthly statement per investor, in the pool's month-end convention: the investment on the 1st, the month's return
@@ -41,8 +41,67 @@ export type MonthStatement = {
   movements: StatementMovement[];
 };
 
-function total(entries: readonly StatementEntry[]): number {
-  return entries.reduce((sum, entry) => sum + entry.amountCents, 0);
+/** A sum of entries, with their count: no entries (`null` in the statement) differ from entries summing to zero. */
+type Total = { cents: number; count: number };
+
+function addTo(totals: Map<IsoMonth, Total>, month: IsoMonth, cents: number): void {
+  const monthTotal = totals.get(month) ?? { cents: 0, count: 0 };
+  monthTotal.cents += cents;
+  monthTotal.count += 1;
+  totals.set(month, monthTotal);
+}
+
+/**
+ * Statements for the given months, in the order given. One pass over the entries and movements: each entry is filed
+ * under the month after which it is part of the 1st, and the 1st is carried forward from month to month.
+ */
+export function buildMonthStatements(
+  entries: readonly StatementEntry[],
+  movements: readonly StatementMovement[],
+  months: readonly IsoMonth[],
+): MonthStatement[] {
+  // Returns of earlier months are part of the 1st (as in the sheet); deposits and withdrawals count before the 1st.
+  const countedAfter = new Map<IsoMonth, Total>();
+  const returnsByMonth = new Map<IsoMonth, Total>();
+  for (const entry of entries) {
+    addTo(countedAfter, entry.returnMonth ?? monthOf(entry.valueDate), entry.amountCents);
+    if (entry.returnMonth !== null) {
+      addTo(returnsByMonth, entry.returnMonth, entry.amountCents);
+    }
+  }
+  const movementsByMonth = new Map<IsoMonth, StatementMovement[]>();
+  for (const movement of movements) {
+    const month = monthOf(movement.valueDate);
+    const monthMovements = movementsByMonth.get(month) ?? [];
+    monthMovements.push(movement);
+    movementsByMonth.set(month, monthMovements);
+  }
+
+  const openingByMonth = new Map<IsoMonth, Total>();
+  const filedMonths = [...countedAfter.keys()].sort();
+  const opening: Total = { cents: 0, count: 0 };
+  let filed = 0;
+  for (const month of [...new Set(months)].sort()) {
+    for (; filed < filedMonths.length && filedMonths[filed] < month; filed++) {
+      const { cents, count } = countedAfter.get(filedMonths[filed])!;
+      opening.cents += cents;
+      opening.count += count;
+    }
+    openingByMonth.set(month, { ...opening });
+  }
+
+  return months.map((month) => {
+    const openingTotal = openingByMonth.get(month)!;
+    const returns = returnsByMonth.get(month);
+    return {
+      month,
+      openingCents: openingTotal.count > 0 ? openingTotal.cents : null,
+      returnCents: returns ? returns.cents : null,
+      movements: (movementsByMonth.get(month) ?? []).toSorted((left, right) =>
+        right.valueDate.localeCompare(left.valueDate),
+      ),
+    };
+  });
 }
 
 export function buildMonthStatement(
@@ -50,21 +109,7 @@ export function buildMonthStatement(
   movements: readonly StatementMovement[],
   month: IsoMonth,
 ): MonthStatement {
-  const start = firstDayOfMonth(month);
-  const end = lastDayOfMonth(month);
-  // Returns of earlier months are part of the 1st (as in the sheet); deposits and withdrawals count before the 1st.
-  const before = entries.filter((entry) =>
-    entry.returnMonth === null ? entry.valueDate < start : entry.returnMonth < month,
-  );
-  const returns = entries.filter((entry) => entry.returnMonth === month);
-  return {
-    month,
-    openingCents: before.length > 0 ? total(before) : null,
-    returnCents: returns.length > 0 ? total(returns) : null,
-    movements: movements
-      .filter((movement) => movement.valueDate >= start && movement.valueDate <= end)
-      .sort((left, right) => right.valueDate.localeCompare(left.valueDate)),
-  };
+  return buildMonthStatements(entries, movements, [month])[0];
 }
 
 /** Statements for every month from `fromMonth` to `toMonth`, newest first. */
@@ -74,11 +119,11 @@ export function buildStatements(
   fromMonth: IsoMonth,
   toMonth: IsoMonth,
 ): MonthStatement[] {
-  const statements: MonthStatement[] = [];
+  const months: IsoMonth[] = [];
   for (let month = toMonth; month >= fromMonth; month = addMonths(month, -1)) {
-    statements.push(buildMonthStatement(entries, movements, month));
+    months.push(month);
   }
-  return statements;
+  return buildMonthStatements(entries, movements, months);
 }
 
 /** The first month with any booking or request, or `null` when there is none. */

@@ -9,9 +9,7 @@ export function Breakdown({ rows }: { rows: Array<{ label: string; value: ReactN
       {rows.map((row) => (
         <div key={row.label} className="flex items-start justify-between gap-4">
           <dt className="text-muted">{row.label}</dt>
-          <dd className={cn("amount text-right font-semibold", row.emphasis ? "text-gain" : "text-fg")}>
-            {row.value}
-          </dd>
+          <dd className={cn("amount text-right font-semibold", row.emphasis ? "text-gain" : "text-fg")}>{row.value}</dd>
         </div>
       ))}
     </dl>

@@ -15,7 +15,9 @@ export default async function LoginPage() {
 
   return (
     <>
-      <h1 className="font-display text-2xl leading-tight font-semibold tracking-tight text-fg">{text.loginTitle}</h1>
+      <h1 className="font-display text-2xl leading-tight font-semibold tracking-tight text-accent-400">
+        {text.loginTitle}
+      </h1>
       <p className="mt-1.5 mb-6 text-sm text-muted">{text.loginSubtitle}</p>
       <LoginForm />
       <p className="mt-6 border-t border-line pt-5 text-center text-sm text-muted">{text.accountsByAdmin}</p>

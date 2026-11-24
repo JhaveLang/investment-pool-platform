@@ -14,7 +14,7 @@ import {
 } from "@/server/queries/accrual";
 import { getReturnSchedule } from "@/server/queries/returns";
 import { recordAudit } from "./audit";
-import { postLedgerEntry } from "./ledger";
+import { postLedgerEntries } from "./ledger";
 
 export type MonthlyReturnRow = {
   accountId: string;
@@ -180,15 +180,16 @@ export async function bookMonthlyReturn(input: BookMonthlyReturnInput): Promise<
       })
       .returning();
 
-    for (const posting of postings) {
-      await postLedgerEntry(tx, {
+    await postLedgerEntries(
+      tx,
+      postings.map((posting) => ({
         accountId: posting.accountId,
         entryType: "monthly_return",
         amountCents: posting.returnCents,
         returnPeriodId: period.id,
         createdByUserId: input.adminUserId,
-      });
-    }
+      })),
+    );
 
     await recordAudit(tx, {
       actorUserId: input.adminUserId,

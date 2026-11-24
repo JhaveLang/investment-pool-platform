@@ -190,18 +190,23 @@ export async function loadPausedRanges(executor: DbExecutor, periodEnd: IsoDate)
     .orderBy(asc(auditLogs.id));
 
   const ranges = new Map<string, PausedRange[]>();
+  const addRange = (accountId: string, range: PausedRange) => {
+    const accountRanges = ranges.get(accountId) ?? [];
+    accountRanges.push(range);
+    ranges.set(accountId, accountRanges);
+  };
   const openSince = new Map<string, string>();
   for (const row of rows) {
     const since = openSince.get(row.accountId);
     if (row.action === "user.deactivated" && since === undefined) {
       openSince.set(row.accountId, row.day);
     } else if (row.action === "user.activated" && since !== undefined) {
-      ranges.set(row.accountId, [...(ranges.get(row.accountId) ?? []), { from: since, until: row.day }]);
+      addRange(row.accountId, { from: since, until: row.day });
       openSince.delete(row.accountId);
     }
   }
   for (const [accountId, since] of openSince) {
-    ranges.set(accountId, [...(ranges.get(accountId) ?? []), { from: since, until: null }]);
+    addRange(accountId, { from: since, until: null });
   }
   return ranges;
 }

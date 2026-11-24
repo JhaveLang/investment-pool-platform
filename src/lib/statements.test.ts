@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
+import { addMonths, firstDayOfMonth, lastDayOfMonth, type IsoMonth } from "./calendar";
 import {
   buildMonthStatement,
+  buildMonthStatements,
   buildStatements,
   firstStatementMonth,
+  type MonthStatement,
   type StatementEntry,
   type StatementMovement,
 } from "./statements";
@@ -90,5 +93,101 @@ describe("buildStatements", () => {
   it("finds the first month with activity", () => {
     expect(firstStatementMonth(entries, movements)).toBe("2026-08");
     expect(firstStatementMonth([], [])).toBeNull();
+  });
+});
+
+/** The statement as first written, month by month over every entry: what the one-pass version must match. */
+function referenceMonthStatement(
+  entries: readonly StatementEntry[],
+  movements: readonly StatementMovement[],
+  month: IsoMonth,
+): MonthStatement {
+  const start = firstDayOfMonth(month);
+  const end = lastDayOfMonth(month);
+  const before = entries.filter((entry) =>
+    entry.returnMonth === null ? entry.valueDate < start : entry.returnMonth < month,
+  );
+  const returns = entries.filter((entry) => entry.returnMonth === month);
+  const total = (list: StatementEntry[]) => list.reduce((sum, entry) => sum + entry.amountCents, 0);
+  return {
+    month,
+    openingCents: before.length > 0 ? total(before) : null,
+    returnCents: returns.length > 0 ? total(returns) : null,
+    movements: movements
+      .filter((movement) => movement.valueDate >= start && movement.valueDate <= end)
+      .sort((left, right) => right.valueDate.localeCompare(left.valueDate)),
+  };
+}
+
+function movement(reference: string, valueDate: string, amountCents: number): StatementMovement {
+  return { kind: "deposit", status: "reconciled", reference, valueDate, amountCents, pending: false, booked: true };
+}
+
+/** Deterministic pseudo-random numbers (mulberry32), so a failure can be replayed. */
+function random(seed: number): () => number {
+  let state = seed;
+  return () => {
+    state = (state + 0x6d2b79f5) | 0;
+    let value = Math.imul(state ^ (state >>> 15), 1 | state);
+    value = (value + Math.imul(value ^ (value >>> 7), 61 | value)) ^ value;
+    return ((value ^ (value >>> 14)) >>> 0) / 4_294_967_296;
+  };
+}
+
+describe("buildMonthStatements", () => {
+  const range = buildStatements(entries, movements, "2026-06", "2026-12").map((statement) => statement.month);
+
+  it("matches the month-by-month statement, in the order the months are given", () => {
+    for (const months of [range, range.toReversed(), ["2026-10", "2026-07", "2026-12", "2026-09"]]) {
+      expect(buildMonthStatements(entries, movements, months)).toEqual(
+        months.map((month) => referenceMonthStatement(entries, movements, month)),
+      );
+    }
+  });
+
+  it("keeps a 1st of zero apart from no booking at all", () => {
+    const netted: StatementEntry[] = [
+      { valueDate: "2026-08-03", amountCents: 50_000, returnMonth: null },
+      { valueDate: "2026-08-03", amountCents: -50_000, returnMonth: null },
+    ];
+    const [july, september] = buildMonthStatements(netted, [], ["2026-07", "2026-09"]);
+    expect(july.openingCents).toBeNull();
+    expect(september.openingCents).toBe(0);
+  });
+
+  it("answers a month asked twice the same way both times", () => {
+    const [first, second] = buildMonthStatements(entries, movements, ["2026-09", "2026-09"]);
+    expect(second).toEqual(first);
+    expect(second.movements).not.toBe(first.movements);
+  });
+
+  it("keeps movements of the same day in their given order", () => {
+    const sameDay = [movement("EZ-A", "2026-09-10", 100), movement("EZ-B", "2026-09-10", 200)];
+    const [september] = buildMonthStatements([], [...sameDay, movement("EZ-C", "2026-09-20", 300)], ["2026-09"]);
+    expect(september.movements.map((item) => item.reference)).toEqual(["EZ-C", "EZ-A", "EZ-B"]);
+  });
+
+  it("matches the month-by-month statement on random histories", () => {
+    for (let seed = 1; seed <= 50; seed++) {
+      const next = random(seed);
+      const pick = (count: number) => Math.floor(next() * count);
+      const dayIn = (month: IsoMonth) => `${month}-${String(1 + pick(28)).padStart(2, "0")}`;
+      const monthOffset = () => addMonths("2025-01", pick(30));
+      const randomEntries: StatementEntry[] = Array.from({ length: pick(40) }, () => {
+        const amountCents = pick(2) === 0 ? pick(100_000) - 50_000 : 0;
+        if (pick(3) === 0) {
+          const returnMonth = monthOffset();
+          return { valueDate: firstDayOfMonth(addMonths(returnMonth, 1)), amountCents, returnMonth };
+        }
+        return { valueDate: dayIn(monthOffset()), amountCents, returnMonth: null };
+      });
+      const randomMovements = Array.from({ length: pick(20) }, (_unused, index) =>
+        movement(`EZ-${index}`, dayIn(monthOffset()), pick(100_000) - 50_000),
+      );
+      const months = Array.from({ length: 1 + pick(36) }, () => addMonths("2024-10", pick(36)));
+      expect(buildMonthStatements(randomEntries, randomMovements, months)).toEqual(
+        months.map((month) => referenceMonthStatement(randomEntries, randomMovements, month)),
+      );
+    }
   });
 });

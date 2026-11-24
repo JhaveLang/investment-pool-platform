@@ -10,7 +10,9 @@ export type QueueGroup<Entry extends QueueEntry> = { accountId: string; entries:
 export function groupByAccount<Entry extends QueueEntry>(entries: readonly Entry[]): QueueGroup<Entry>[] {
   const groups = new Map<string, Entry[]>();
   for (const entry of entries.toSorted((left, right) => right.createdAt.getTime() - left.createdAt.getTime())) {
-    groups.set(entry.accountId, [...(groups.get(entry.accountId) ?? []), entry]);
+    const groupEntries = groups.get(entry.accountId) ?? [];
+    groupEntries.push(entry);
+    groups.set(entry.accountId, groupEntries);
   }
   return [...groups].map(([accountId, groupEntries]) => ({ accountId, entries: groupEntries }));
 }

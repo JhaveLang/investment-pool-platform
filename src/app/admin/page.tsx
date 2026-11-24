@@ -114,7 +114,7 @@ export default async function AdminOverviewPage() {
           </span>
           <span className="label-caps text-subtle">{messages.dashboard.asOf(format.time(renderedAt))}</span>
         </div>
-        <h1 className="font-display text-2xl leading-tight font-semibold tracking-tight text-fg sm:text-[32px] sm:leading-10">
+        <h1 className="font-display text-2xl leading-tight font-semibold tracking-tight text-accent-400 sm:text-[32px] sm:leading-10">
           {text.overviewTitle}
         </h1>
         <p className="max-w-2xl text-sm text-muted">{text.overviewSubtitle}</p>

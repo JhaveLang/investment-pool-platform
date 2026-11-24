@@ -173,6 +173,8 @@ export const deposits = pgTable(
     uniqueIndex("deposits_account_idempotency_idx").on(table.accountId, table.idempotencyKey),
     index("deposits_account_created_idx").on(table.accountId, table.createdAt),
     index("deposits_status_created_idx").on(table.status, table.createdAt),
+    /** The activity log names its entity by id as text; live updates look the deposit up by it. */
+    index("deposits_id_text_idx").on(sql`(${table.id}::text)`),
   ],
 );
 
@@ -212,6 +214,8 @@ export const withdrawals = pgTable(
     uniqueIndex("withdrawals_account_idempotency_idx").on(table.accountId, table.idempotencyKey),
     index("withdrawals_account_created_idx").on(table.accountId, table.createdAt),
     index("withdrawals_status_created_idx").on(table.status, table.createdAt),
+    /** The activity log names its entity by id as text; live updates look the withdrawal up by it. */
+    index("withdrawals_id_text_idx").on(sql`(${table.id}::text)`),
   ],
 );
 
@@ -238,6 +242,8 @@ export const returnPeriods = pgTable(
   (table) => [
     check("return_periods_rate_range", sql`${table.ratePpm} > -1000000 and ${table.ratePpm} <= 1000000`),
     check("return_periods_first_of_month", sql`extract(day from ${table.periodStart}) = 1`),
+    /** The activity log names its entity by id as text; live updates look the booked month up by it. */
+    index("return_periods_id_text_idx").on(sql`(${table.id}::text)`),
   ],
 );
 
@@ -276,6 +282,10 @@ export const ledgerEntries = pgTable(
     /** Each account receives at most one return per booked month. */
     uniqueIndex("ledger_entries_account_return_period_idx")
       .on(table.accountId, table.returnPeriodId)
+      .where(sql`${table.returnPeriodId} is not null`),
+    /** A booked month's entries, e.g. for its live update; the index above leads with the account. */
+    index("ledger_entries_return_period_idx")
+      .on(table.returnPeriodId)
       .where(sql`${table.returnPeriodId} is not null`),
     index("ledger_entries_created_idx").on(table.createdAt),
   ],
