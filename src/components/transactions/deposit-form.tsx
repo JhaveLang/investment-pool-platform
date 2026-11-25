@@ -9,6 +9,7 @@ import { useFormatter, useLocale, useMessages } from "@/i18n/client";
 import { fieldErrorsOf, idleActionState, submittedValuesOf } from "@/lib/action-state";
 import { depositFeeCents, FEE_PERCENT } from "@/lib/fees";
 import { parseAmountToCents } from "@/lib/money";
+import type { AmountLimits } from "@/lib/pool-settings";
 import { ACCRUAL_DELAY_DAYS, MINIMUM_TERM_DAYS } from "@/lib/returns";
 import { AmountField } from "./amount-field";
 import { Breakdown, ProjectedBalance } from "./breakdown";
@@ -20,9 +21,10 @@ type DepositFormProps = {
   /** Generated per page render, so a double submit books only once. */
   idempotencyKey: string;
   balanceCents: number;
+  limits: AmountLimits;
 };
 
-export function DepositForm({ idempotencyKey, balanceCents }: DepositFormProps) {
+export function DepositForm({ idempotencyKey, balanceCents, limits }: DepositFormProps) {
   const text = useMessages().deposits;
   const locale = useLocale();
   const format = useFormatter();
@@ -51,6 +53,7 @@ export function DepositForm({ idempotencyKey, balanceCents }: DepositFormProps) 
         label={text.amount}
         value={amountText}
         onChange={setAmountText}
+        limits={limits}
         quickAdds={QUICK_ADDS}
         placeholder={text.amountPlaceholder}
         error={fieldErrors.amount ?? fieldErrors.idempotencyKey}

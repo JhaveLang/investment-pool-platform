@@ -13,7 +13,8 @@ export type DomainErrorCode =
   | "UNRECONCILED_DEPOSITS"
   | "PREVIEW_OUTDATED"
   | "WRONG_PASSWORD"
-  | "ACCOUNT_DEACTIVATED";
+  | "ACCOUNT_DEACTIVATED"
+  | "DEPOSITS_CLOSED";
 
 /**
  * An expected business rule violation. Server actions translate the code into a

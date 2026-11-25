@@ -1,6 +1,7 @@
 import type { AuditAction, DepositStatus, InvestorStatus, LedgerEntryType, WithdrawalStatus } from "@/server/db/schema";
 import type { DomainErrorCode } from "@/lib/errors";
 import type { PaymentMethod } from "@/lib/fees";
+import type { DepositState, PoolSettings } from "@/lib/pool-settings";
 import type { AdminNotificationType, InvestorNotificationType } from "@/lib/notifications";
 
 /**
@@ -70,6 +71,7 @@ export const de = {
     adminWithdrawals: "Auszahlungen",
     adminInvestors: "Anleger",
     adminReturns: "Rendite",
+    adminPool: "Pool",
     adminReports: "Berichte",
     adminNews: "News",
     adminActivity: "Aktivitätsprotokoll",
@@ -144,6 +146,11 @@ export const de = {
     investorCodeTooShort: (minimum: number) => `Die Anleger-ID muss mindestens ${minimum} Zeichen lang sein.`,
     investorCodeTooLong: (maximum: number) => `Die Anleger-ID darf höchstens ${maximum} Zeichen lang sein.`,
     newsTextTooLong: (maximum: number) => `Der Text darf höchstens ${maximum} Zeichen lang sein.`,
+    maximumBelowMinimum: "Der Höchstbetrag darf nicht unter dem Mindestbetrag liegen.",
+    lastDayBeforeFirst: "Der letzte Tag darf nicht vor dem ersten liegen.",
+    withdrawalMinTooHigh: (maximum: string) =>
+      `Höchstens ${maximum}, damit Anleger auch kleine Guthaben abheben können.`,
+    withdrawalMaxTooLow: (minimum: string) => `Mindestens ${minimum}, damit Auszahlungen möglich bleiben.`,
     investorCodeTwice: "Diese Anleger-ID ist mehrfach eingetragen.",
   },
 
@@ -275,6 +282,13 @@ export const de = {
     receivedOn: (date: string) => `Eingang am ${date}`,
     historyTitle: "Ihre Einzahlungen",
     empty: "Sie haben noch keine Einzahlungen getätigt.",
+    dates: (first: string | null, last: string | null) =>
+      first && last
+        ? `Zeitraum für Einzahlungen: ${first} bis ${last}.`
+        : first
+          ? `Zeitraum für Einzahlungen: ab ${first}.`
+          : `Zeitraum für Einzahlungen: bis ${last}.`,
+    closed: "Der Pool nimmt derzeit keine neuen Einzahlungen an. Bereits übermittelte Einzahlungen werden weiter abgeglichen, Auszahlungen sind jederzeit möglich.",
     switchLabel: "Einzahlen",
     noFee: "Keine Gebühr",
     feeLabel: "Gebühr",
@@ -648,6 +662,47 @@ export const de = {
       submit: "Anleger anlegen",
       submitPending: "Wird angelegt …",
     },
+    pool: {
+      title: "Pool",
+      subtitle: "Einzahlungen öffnen oder schließen, Zeitraum, Betragsgrenzen und ein Hinweis für Anleger.",
+      settingsTitle: "Pool-Einstellungen",
+      lastChanged: (date: string) => `Zuletzt geändert: ${date}`,
+      depositsOpenLabel: "Pool nimmt Einzahlungen an",
+      depositsOpenHint:
+        "Ist der Pool geschlossen, können Anleger keine neuen Einzahlungen buchen. Offene Einzahlungen lassen sich weiter abgleichen, Auszahlungen sind immer möglich.",
+      depositDates: "Zeitraum für Einzahlungen",
+      depositDatesHint:
+        "Erster und letzter Tag sind eingeschlossen, leer heißt ohne Grenze. Ist der Pool oben geschlossen, gelten die Daten nicht.",
+      firstDay: "Erster Tag",
+      lastDay: "Letzter Tag",
+      depositLimits: "Einzahlungen (EUR)",
+      withdrawalLimits: "Auszahlungen (EUR)",
+      minimum: "Mindestbetrag",
+      maximum: "Höchstbetrag",
+      depositHint: "Je Antrag: der Betrag, den der Anleger einzahlt.",
+      withdrawalHint: (minimum: string, maximum: string) =>
+        `Je Antrag: der ausgezahlte Betrag, die Gebühr kommt hinzu. Mindestbetrag höchstens ${minimum}, Höchstbetrag mindestens ${maximum}; wer weniger als den Mindestbetrag hat, kann alles abheben.`,
+      notices: "Hinweis für Anleger",
+      noticesHint: "Steht über den Formularen zum Ein- und Auszahlen. Leer lassen, um keinen Hinweis zu zeigen.",
+      noticeDe: "Deutsch",
+      noticeEn: "Englisch",
+      save: "Speichern",
+      savePending: "Wird gespeichert …",
+      saved: "Die Pool-Einstellungen wurden gespeichert.",
+      unchanged: "Es gab keine Änderungen.",
+      states: { open: "offen", closed: "geschlossen", notYet: "noch nicht geöffnet", ended: "beendet" } satisfies Record<DepositState, string>,
+      fields: {
+        depositsOpen: "Einzahlungen",
+        depositsFrom: "Einzahlungen, erster Tag",
+        depositsUntil: "Einzahlungen, letzter Tag",
+        depositMinCents: "Einzahlung, Mindestbetrag",
+        depositMaxCents: "Einzahlung, Höchstbetrag",
+        withdrawalMinCents: "Auszahlung, Mindestbetrag",
+        withdrawalMaxCents: "Auszahlung, Höchstbetrag",
+        noticeDe: "Hinweis (Deutsch)",
+        noticeEn: "Hinweis (Englisch)",
+      } satisfies Record<keyof PoolSettings, string>,
+    },
     news: {
       title: "News",
       subtitle:
@@ -790,6 +845,7 @@ export const de = {
       "user.deactivated": "Anleger deaktiviert",
       "user.activated": "Anleger aktiviert",
       "auth.login_blocked": "Anmeldung abgewiesen (deaktiviert)",
+      "pool.settings_updated": "Pool-Einstellungen geändert",
       "news.created": "Mitteilung angelegt",
       "news.updated": "Mitteilung geändert",
       "news.deleted": "Mitteilung gelöscht",
@@ -881,6 +937,7 @@ export const de = {
     PREVIEW_OUTDATED: "Die Daten haben sich seit der Vorschau geändert. Bitte berechnen Sie die Vorschau neu.",
     WRONG_PASSWORD: "Das aktuelle Passwort ist nicht korrekt.",
     ACCOUNT_DEACTIVATED: "Dieses Konto wurde deaktiviert. Bitte wenden Sie sich an die Pool-Verwaltung.",
+    DEPOSITS_CLOSED: "Der Pool nimmt derzeit keine neuen Einzahlungen an.",
   } satisfies Record<DomainErrorCode, string>,
 };
 

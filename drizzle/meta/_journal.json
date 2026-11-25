@@ -64,6 +64,20 @@
       "when": 1795514089358,
       "tag": "0008_notification_lookup_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1795578607150,
+      "tag": "0009_pool_settings",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1795581627680,
+      "tag": "0010_pool_deposit_dates",
+      "breakpoints": true
     }
   ]
 }

@@ -64,7 +64,8 @@ export type AuditAction =
   | "auth.login_blocked"
   | "news.created"
   | "news.updated"
-  | "news.deleted";
+  | "news.deleted"
+  | "pool.settings_updated";
 
 // ---------------------------------------------------------------------------
 // Shared column helpers
@@ -341,6 +342,49 @@ export const newsEntries = pgTable(
 );
 
 // ---------------------------------------------------------------------------
+// Pool settings
+// ---------------------------------------------------------------------------
+
+/** One row (id 1, created by its migration) with what the admin sets on the pool page; see `src/lib/pool-settings.ts`. */
+export const poolSettings = pgTable(
+  "pool_settings",
+  {
+    id: integer("id").primaryKey().default(1),
+    depositsOpen: boolean("deposits_open").notNull().default(true),
+    depositsFrom: date("deposits_from", { mode: "string" }),
+    depositsUntil: date("deposits_until", { mode: "string" }),
+    depositMinCents: cents("deposit_min_cents").notNull(),
+    depositMaxCents: cents("deposit_max_cents").notNull(),
+    withdrawalMinCents: cents("withdrawal_min_cents").notNull(),
+    withdrawalMaxCents: cents("withdrawal_max_cents").notNull(),
+    noticeDe: text("notice_de"),
+    noticeEn: text("notice_en"),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    check("pool_settings_single_row", sql`${table.id} = 1`),
+    check("pool_settings_deposit_dates", sql`${table.depositsFrom} <= ${table.depositsUntil}`),
+    check(
+      "pool_settings_deposit_limits",
+      sql`${table.depositMinCents} > 0 and ${table.depositMinCents} <= ${table.depositMaxCents}`,
+    ),
+    // Withdrawals can't be blocked through their limits.
+    check(
+      "pool_settings_withdrawal_limits",
+      sql`${table.withdrawalMinCents} between 1 and 10000 and ${table.withdrawalMaxCents} >= 100000`,
+    ),
+    check(
+      "pool_settings_notice_de_length",
+      sql`${table.noticeDe} IS NULL OR char_length(${table.noticeDe}) between 1 and 500`,
+    ),
+    check(
+      "pool_settings_notice_en_length",
+      sql`${table.noticeEn} IS NULL OR char_length(${table.noticeEn}) between 1 and 500`,
+    ),
+  ],
+);
+
+// ---------------------------------------------------------------------------
 // Inferred types
 // ---------------------------------------------------------------------------
 
@@ -357,3 +401,4 @@ export type ReturnPeriod = typeof returnPeriods.$inferSelect;
 export type LedgerEntry = typeof ledgerEntries.$inferSelect;
 export type LedgerEntryType = (typeof ledgerEntryTypeEnum.enumValues)[number];
 export type NewsEntry = typeof newsEntries.$inferSelect;
+export type PoolSettingsRow = typeof poolSettings.$inferSelect;

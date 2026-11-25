@@ -4,9 +4,11 @@ import { todayIsoDate, type IsoDate } from "@/lib/calendar";
 import { DomainError } from "@/lib/errors";
 import { depositFeeCents, type PaymentMethod } from "@/lib/fees";
 import { formatIsoDate } from "@/lib/format";
+import { depositState } from "@/lib/pool-settings";
 import { getDb, type DbTransaction } from "@/server/db/client";
 import { accounts, deposits, type Deposit, type DepositStatus } from "@/server/db/schema";
 import { loadReservedPayoutCents } from "@/server/queries/accrual";
+import { getPoolSettings } from "@/server/queries/pool-settings";
 import { recordAudit } from "./audit";
 import { generateReference, lockAccountForUser, postLedgerEntry } from "./ledger";
 import type { ReviewInput } from "./types";
@@ -32,7 +34,8 @@ function creditedCents(deposit: Deposit): number {
 /**
  * Records a deposit the investor has sent. It waits in "pending" until an admin reconciles it
  * with the actual receipt date; only then is the balance credited (see `reconcileDeposit`).
- * Re-submitting the same form (same idempotency key) returns the original deposit.
+ * Re-submitting the same form (same idempotency key) returns the original deposit. Closed by the
+ * admin or outside its deposit dates, the pool takes none.
  */
 export async function createDeposit(input: CreateDepositInput): Promise<Deposit> {
   return getDb().transaction(async (tx) => {
@@ -44,6 +47,9 @@ export async function createDeposit(input: CreateDepositInput): Promise<Deposit>
       .where(and(eq(deposits.accountId, account.id), eq(deposits.idempotencyKey, input.idempotencyKey)));
     if (existingDeposit) {
       return existingDeposit;
+    }
+    if (depositState(await getPoolSettings(tx), todayIsoDate()) !== "open") {
+      throw new DomainError("DEPOSITS_CLOSED");
     }
 
     const [deposit] = await tx

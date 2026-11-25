@@ -8,6 +8,11 @@ import { isValidIban, normalizeIban } from "@/lib/iban";
 import { INVESTOR_CODE_MAX_LENGTH, INVESTOR_CODE_MIN_LENGTH, INVESTOR_CODE_PATTERN } from "@/lib/investor-code";
 import { MAX_NEWS_TEXT_LENGTH } from "@/lib/news";
 import { MAX_TRANSACTION_CENTS, MIN_TRANSACTION_CENTS, parseAmountToCents, parsePercentToPpm } from "@/lib/money";
+import {
+  HIGHEST_WITHDRAWAL_MIN_CENTS,
+  LOWEST_WITHDRAWAL_MAX_CENTS,
+  MAX_POOL_NOTICE_LENGTH,
+} from "@/lib/pool-settings";
 import { MAX_RATE_PPM, MIN_RATE_PPM_EXCLUSIVE } from "@/lib/returns";
 
 /** At most this many investor IDs are saved at once from the investor list (a page shows 20). */
@@ -105,6 +110,17 @@ function createSchemas(locale: Locale) {
     .max(500, { error: text.noteTooLong })
     .transform((note) => note || undefined);
 
+  /** A date field that may stay empty. */
+  const optionalDateSchema = z
+    .union([z.literal(""), z.iso.date()], { error: text.invalidDate })
+    .transform((date) => date || null);
+
+  const optionalNoticeSchema = z
+    .string()
+    .trim()
+    .max(MAX_POOL_NOTICE_LENGTH, { error: text.newsTextTooLong(MAX_POOL_NOTICE_LENGTH) })
+    .transform((notice) => notice || null);
+
   // -------------------------------------------------------------------------
   // Form schemas
   // -------------------------------------------------------------------------
@@ -198,6 +214,39 @@ function createSchemas(locale: Locale) {
     }),
 
     newsIdSchema: z.uuid({ error: text.invalidRequest }),
+
+    /** The pool page; withdrawals can't be blocked through their limits (see `src/lib/pool-settings.ts`). */
+    poolSettingsSchema: z
+      .object({
+        depositsOpen: z.boolean(),
+        depositsFrom: optionalDateSchema,
+        depositsUntil: optionalDateSchema,
+        depositMin: amountSchema,
+        depositMax: amountSchema,
+        withdrawalMin: amountSchema.refine((amountCents) => amountCents <= HIGHEST_WITHDRAWAL_MIN_CENTS, {
+          error: text.withdrawalMinTooHigh(format.currency(HIGHEST_WITHDRAWAL_MIN_CENTS)),
+        }),
+        withdrawalMax: amountSchema.refine((amountCents) => amountCents >= LOWEST_WITHDRAWAL_MAX_CENTS, {
+          error: text.withdrawalMaxTooLow(format.currency(LOWEST_WITHDRAWAL_MAX_CENTS)),
+        }),
+        noticeDe: optionalNoticeSchema,
+        noticeEn: optionalNoticeSchema,
+      })
+      .refine((values) => values.depositMin <= values.depositMax, {
+        error: text.maximumBelowMinimum,
+        path: ["depositMax"],
+      })
+      .refine(
+        ({ depositsFrom, depositsUntil }) => !depositsFrom || !depositsUntil || depositsFrom <= depositsUntil,
+        { error: text.lastDayBeforeFirst, path: ["depositsUntil"] },
+      )
+      .transform(({ depositMin, depositMax, withdrawalMin, withdrawalMax, ...rest }) => ({
+        ...rest,
+        depositMinCents: depositMin,
+        depositMaxCents: depositMax,
+        withdrawalMinCents: withdrawalMin,
+        withdrawalMaxCents: withdrawalMax,
+      })),
 
     depositSchema: z.object({
       amount: amountSchema,

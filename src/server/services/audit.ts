@@ -7,7 +7,7 @@ import { notifyLiveListeners } from "@/server/notifications";
 export type AuditEntry = {
   actorUserId: string | null;
   action: AuditAction;
-  entityType?: "user" | "deposit" | "withdrawal" | "return_period" | "report" | "news";
+  entityType?: "user" | "deposit" | "withdrawal" | "return_period" | "report" | "news" | "pool";
   entityId?: string;
   metadata?: Record<string, unknown>;
   ipAddress?: string | null;

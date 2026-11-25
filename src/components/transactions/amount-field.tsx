@@ -2,12 +2,15 @@
 
 import { useFormatter, useLocale, useMessages } from "@/i18n/client";
 import { cn } from "@/lib/cn";
-import { MAX_TRANSACTION_CENTS, MIN_TRANSACTION_CENTS, parseAmountToCents } from "@/lib/money";
+import { parseAmountToCents } from "@/lib/money";
+import type { AmountLimits } from "@/lib/pool-settings";
 
 type AmountFieldProps = {
   label: string;
   value: string;
   onChange: (value: string) => void;
+  /** Limits of one request, shown to the right of the label. */
+  limits: AmountLimits;
   /** Steps added to the current amount, in cents. */
   quickAdds: number[];
   /** Fills in the largest possible amount, e.g. what can be withdrawn on this route. */
@@ -22,6 +25,7 @@ export function AmountField({
   label,
   value,
   onChange,
+  limits,
   quickAdds,
   maxCents,
   placeholder,
@@ -45,7 +49,7 @@ export function AmountField({
           {label}
         </label>
         <span className="text-xs text-subtle">
-          {text.limits(format.currency(MIN_TRANSACTION_CENTS), format.currency(MAX_TRANSACTION_CENTS))}
+          {text.limits(format.currency(limits.minCents), format.currency(limits.maxCents))}
         </span>
       </div>
       <div
@@ -77,7 +81,7 @@ export function AmountField({
           <button
             key={step}
             type="button"
-            onClick={() => setCents(Math.min(currentCents + step, MAX_TRANSACTION_CENTS))}
+            onClick={() => setCents(Math.min(currentCents + step, limits.maxCents))}
             className={pillStyles}
             aria-label={text.addAmount(format.currency(step))}
           >

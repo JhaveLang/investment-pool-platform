@@ -62,6 +62,7 @@ export const en: Messages = {
     adminWithdrawals: "Withdrawals",
     adminInvestors: "Investors",
     adminReturns: "Returns",
+    adminPool: "Pool",
     adminReports: "Reports",
     adminNews: "News",
     adminActivity: "Activity log",
@@ -136,6 +137,10 @@ export const en: Messages = {
     investorCodeTooShort: (minimum: number) => `The investor ID must be at least ${minimum} characters long.`,
     investorCodeTooLong: (maximum: number) => `The investor ID can be at most ${maximum} characters long.`,
     newsTextTooLong: (maximum: number) => `The text can be at most ${maximum} characters long.`,
+    maximumBelowMinimum: "The maximum must not be below the minimum.",
+    lastDayBeforeFirst: "The last day must not be before the first.",
+    withdrawalMinTooHigh: (maximum: string) => `At most ${maximum}, so investors can withdraw small balances too.`,
+    withdrawalMaxTooLow: (minimum: string) => `At least ${minimum}, so withdrawals stay possible.`,
     investorCodeTwice: "This investor ID is entered more than once.",
   },
 
@@ -267,6 +272,13 @@ export const en: Messages = {
     receivedOn: (date: string) => `Received on ${date}`,
     historyTitle: "Your deposits",
     empty: "You have not made any deposits yet.",
+    dates: (first: string | null, last: string | null) =>
+      first && last
+        ? `Deposit dates: ${first} to ${last}.`
+        : first
+          ? `Deposit dates: from ${first}.`
+          : `Deposit dates: until ${last}.`,
+    closed: "The pool is not taking new deposits at the moment. Deposits already submitted are still reconciled, and withdrawals are always possible.",
     switchLabel: "Deposit",
     noFee: "No fee",
     feeLabel: "Fee",
@@ -637,6 +649,47 @@ export const en: Messages = {
       submit: "Create investor",
       submitPending: "Creating …",
     },
+    pool: {
+      title: "Pool",
+      subtitle: "Open or close deposits, deposit dates, amount limits and a notice for investors.",
+      settingsTitle: "Pool settings",
+      lastChanged: (date: string) => `Last changed: ${date}`,
+      depositsOpenLabel: "Pool takes deposits",
+      depositsOpenHint:
+        "While the pool is closed, investors can't book new deposits. Open deposits can still be reconciled, and withdrawals are always possible.",
+      depositDates: "Deposit dates",
+      depositDatesHint:
+        "The first and last day are included; leave empty for no limit. While the pool is closed above, the dates don't apply.",
+      firstDay: "First day",
+      lastDay: "Last day",
+      depositLimits: "Deposits (EUR)",
+      withdrawalLimits: "Withdrawals (EUR)",
+      minimum: "Minimum",
+      maximum: "Maximum",
+      depositHint: "Per request: the amount the investor pays in.",
+      withdrawalHint: (minimum: string, maximum: string) =>
+        `Per request: the amount paid out; the fee comes on top. Minimum at most ${minimum}, maximum at least ${maximum}; anyone with less than the minimum can withdraw all of it.`,
+      notices: "Notice for investors",
+      noticesHint: "Shown above the deposit and withdrawal forms. Leave empty to show no notice.",
+      noticeDe: "German",
+      noticeEn: "English",
+      save: "Save",
+      savePending: "Saving …",
+      saved: "The pool settings have been saved.",
+      unchanged: "There were no changes.",
+      states: { open: "open", closed: "closed", notYet: "not open yet", ended: "ended" },
+      fields: {
+        depositsOpen: "Deposits",
+        depositsFrom: "First day for deposits",
+        depositsUntil: "Last day for deposits",
+        depositMinCents: "Deposit minimum",
+        depositMaxCents: "Deposit maximum",
+        withdrawalMinCents: "Withdrawal minimum",
+        withdrawalMaxCents: "Withdrawal maximum",
+        noticeDe: "Notice (German)",
+        noticeEn: "Notice (English)",
+      },
+    },
     news: {
       title: "News",
       subtitle:
@@ -777,6 +830,7 @@ export const en: Messages = {
       "user.deactivated": "Investor deactivated",
       "user.activated": "Investor activated",
       "auth.login_blocked": "Sign-in refused (deactivated)",
+      "pool.settings_updated": "Pool settings changed",
       "news.created": "Notice added",
       "news.updated": "Notice changed",
       "news.deleted": "Notice deleted",
@@ -867,5 +921,6 @@ export const en: Messages = {
     PREVIEW_OUTDATED: "The data has changed since the preview. Please calculate the preview again.",
     WRONG_PASSWORD: "The current password is incorrect.",
     ACCOUNT_DEACTIVATED: "This account has been deactivated. Please contact the pool administrator.",
+    DEPOSITS_CLOSED: "The pool is not taking new deposits at the moment.",
   },
 };
