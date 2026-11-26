@@ -1,4 +1,8 @@
+import Image from "next/image";
 import Link from "next/link";
+import teamCall from "@/assets/team-call.png";
+import { HeroBackdrop } from "@/components/public/hero-backdrop";
+import { RulesTimeline } from "@/components/public/rules-timeline";
 import { getAccountLink } from "@/components/public/site-header";
 import { publicContainer } from "@/components/public/site-layout";
 import { buttonStyles } from "@/components/ui/button";
@@ -27,83 +31,137 @@ export default async function HomePage() {
     { icon: "shieldCheck", title: auth.factLedgerTitle, detail: auth.factLedgerDetail },
   ];
 
+  const keyFacts = [
+    { label: text.termLabel, value: text.termValue(MINIMUM_TERM_DAYS) },
+    { label: text.accrualLabel, value: text.accrualValue(ACCRUAL_DELAY_DAYS) },
+    { label: text.payoutLabel, value: text.payoutValue(PAYOUT_DEADLINE_DAYS) },
+  ];
+
   return (
     <>
-      <section
-        className={cn(
-          publicContainer,
-          "grid items-center gap-10 py-14 sm:py-20 lg:grid-cols-[minmax(0,1fr)_420px] lg:gap-16",
-        )}
-      >
-        <div>
-          <span className="flex w-fit items-center gap-1.5 rounded-full border border-accent-400/25 bg-accent-400/10 px-2.5 py-1 text-accent-400">
-            <span aria-hidden className="size-1.5 rounded-full bg-accent-400" />
-            <span className="label-caps">{text.since(format.month(SITE.foundedMonth))}</span>
-          </span>
-          <h1 className="mt-5 font-display text-[40px] leading-[1.08] font-bold tracking-[-0.03em] text-accent-400 sm:text-[56px]">
-            {messages.app.name}
-          </h1>
-          <p className="mt-3 font-display text-xl font-semibold text-muted sm:text-2xl">{text.tagline}</p>
-          <p className="mt-5 max-w-xl text-base leading-relaxed text-muted">{text.heroText}</p>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <Link href={account.href} className={buttonStyles({ size: "lg" })}>
-              <Icon name="lock" className="size-4" />
-              {account.label}
-            </Link>
-            <Link href="/news" className={buttonStyles({ variant: "secondary", size: "lg" })}>
-              {text.allNews}
-            </Link>
+      <section className="grid-backdrop relative overflow-hidden border-b border-line">
+        <HeroBackdrop />
+        <div
+          className={cn(publicContainer, "relative grid items-center gap-10 py-14 sm:py-20 lg:grid-cols-2 lg:gap-16")}
+        >
+          <div>
+            <span className="flex w-fit items-center gap-1.5 rounded-full border border-line-strong/60 bg-overlay px-3 py-1 text-accent-300">
+              <span aria-hidden className="size-1.5 rounded-full bg-accent-300" />
+              <span className="label-caps">{text.since(format.month(SITE.foundedMonth))}</span>
+            </span>
+            <h1 className="mt-5 font-display text-[32px] leading-[38px] font-bold tracking-[-0.02em] text-balance text-accent-300 md:text-[52px] md:leading-[58px]">
+              {messages.app.name}
+            </h1>
+            <p className="mt-3 font-display text-[22px] leading-7 font-bold text-muted">{text.tagline}</p>
+            <p className="mt-5 max-w-xl text-base leading-relaxed text-muted">{text.heroText}</p>
+            <div className="mt-8 flex flex-wrap gap-3">
+              <Link href={account.href} className={buttonStyles({ size: "lg" })}>
+                <Icon name="lock" className="size-4" />
+                {account.label}
+              </Link>
+              <Link href="/news" className={buttonStyles({ variant: "secondary", size: "lg" })}>
+                {text.allNews}
+              </Link>
+            </div>
+            <dl className="mt-8 grid max-w-xl grid-cols-3 gap-4 border-t border-line pt-5">
+              {keyFacts.map((fact) => (
+                <div key={fact.label}>
+                  <dt className="label-caps break-words hyphens-auto text-muted">{fact.label}</dt>
+                  <dd className="mt-1 font-semibold text-accent-300">{fact.value}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+          <div className="overflow-hidden rounded-3xl border border-line bg-surface shadow-xl">
+            <Image
+              src={teamCall}
+              alt={text.heroImageAlt}
+              sizes="(min-width: 1024px) 512px, 100vw"
+              placeholder="blur"
+              loading="eager"
+              fetchPriority="high"
+              className="h-auto w-full"
+            />
           </div>
         </div>
+      </section>
 
-        <aside className="ambient-glow flex flex-col gap-5 rounded-2xl bg-raised p-6 shadow-xl sm:p-8">
-          <span className="label-caps text-accent-400">{text.forInvestors}</span>
-          <div>
-            <h2 className="font-display text-2xl font-bold tracking-tight text-accent-400">{text.accountTitle}</h2>
-            <p className="mt-2 text-sm leading-relaxed text-muted">{text.accountText}</p>
+      <section className={cn(publicContainer, "grid gap-6 py-12 lg:grid-cols-2 lg:py-16")}>
+        <div className="flex flex-col gap-6 rounded-2xl border border-line bg-surface p-6 shadow-sm sm:p-8">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <span className="label-caps block text-muted">{text.ledgerLabel}</span>
+              <h2 className="mt-1 font-display text-[22px] leading-7 font-bold text-accent-300">{text.ledgerTitle}</h2>
+              <p className="mt-2 text-sm leading-relaxed text-muted">{text.ledgerText}</p>
+            </div>
+            <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-overlay text-accent-400">
+              <Icon name="receipt" className="size-5" />
+            </span>
           </div>
-          <ul className="space-y-2.5">
-            {text.accountFeatures.map((feature) => (
-              <li key={feature} className="flex items-start gap-2.5 text-sm text-fg">
-                <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-accent-400/15 text-accent-400">
-                  <Icon name="shieldCheck" className="size-3" />
-                </span>
-                {feature}
-              </li>
-            ))}
-          </ul>
-          <Link href={account.href} className={buttonStyles({ className: "w-full" })}>
-            {account.label}
-          </Link>
-          {SITE.closedToNewInvestorsSince ? (
-            <p className="rounded-xl bg-overlay/60 px-4 py-3 text-[13px] text-muted">
-              {text.closedSince(format.calendarDate(SITE.closedToNewInvestorsSince))}
-            </p>
-          ) : null}
+          <RulesTimeline />
+        </div>
+
+        <aside className="flex flex-col justify-between gap-6 rounded-3xl border border-line bg-surface p-6 shadow-lg sm:p-8">
+          <div className="flex flex-col gap-5">
+            <div>
+              <span className="label-caps block text-muted">{text.forInvestors}</span>
+              <h2 className="mt-1 font-display text-[28px] leading-[34px] font-bold text-accent-300">
+                {text.accountTitle}
+              </h2>
+              <p className="mt-2 text-sm leading-relaxed text-muted">{text.accountText}</p>
+            </div>
+            <ul className="space-y-2.5">
+              {text.accountFeatures.map((feature) => (
+                <li key={feature} className="flex items-start gap-2.5 text-sm text-fg">
+                  <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-overlay text-accent-400">
+                    <Icon name="shieldCheck" className="size-3" />
+                  </span>
+                  {feature}
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="flex flex-col gap-4">
+            <Link href={account.href} className={buttonStyles({ size: "lg", className: "w-full" })}>
+              {account.label}
+            </Link>
+            {SITE.closedToNewInvestorsSince ? (
+              <p className="rounded-xl border border-line bg-raised px-4 py-3 text-[13px] text-muted">
+                {text.closedSince(format.calendarDate(SITE.closedToNewInvestorsSince))}
+              </p>
+            ) : null}
+          </div>
         </aside>
       </section>
 
-      <section className={cn(publicContainer, "py-8")}>
-        <h2 className="font-display text-2xl font-bold tracking-tight text-accent-400">{text.howItWorks}</h2>
+      <section className={cn(publicContainer, "pb-12 lg:pb-16")}>
+        <h2 className="font-display text-[28px] leading-[34px] font-bold text-accent-300">{text.howItWorks}</h2>
         <ul className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {facts.map((fact) => (
-            <li key={fact.title} className="flex flex-col gap-2 rounded-xl border border-line bg-surface p-5">
-              <span className="grid size-10 place-items-center rounded-lg bg-accent-400/10 text-accent-400">
+            <li
+              key={fact.title}
+              className="flex flex-col gap-2 rounded-2xl border border-line bg-surface p-6 shadow-sm"
+            >
+              <span className="grid size-10 place-items-center rounded-lg bg-overlay text-accent-400">
                 <Icon name={fact.icon} className="size-5" />
               </span>
-              <span className="mt-1 font-display text-base font-semibold text-fg">{fact.title}</span>
+              <span className="mt-2 font-semibold text-fg">{fact.title}</span>
               <span className="text-sm text-muted">{fact.detail}</span>
             </li>
           ))}
         </ul>
       </section>
 
-      <section className={cn(publicContainer, "grid gap-6 py-8 lg:grid-cols-[minmax(0,1fr)_380px]")}>
-        <div className="rounded-2xl border border-line bg-surface p-6 sm:p-8">
+      <section className={cn(publicContainer, "grid gap-6 pb-16 lg:grid-cols-12")}>
+        <div className="rounded-2xl border border-line bg-surface p-6 shadow-sm sm:p-8 lg:col-span-7">
           <div className="flex items-center justify-between gap-4">
-            <h2 className="font-display text-xl font-bold tracking-tight text-accent-400">{text.latestNews}</h2>
-            <Link href="/news" className="text-sm font-semibold text-accent-400 hover:underline">
-              {text.allNews} →
+            <h2 className="font-display text-[22px] leading-7 font-bold text-accent-300">{text.latestNews}</h2>
+            <Link
+              href="/news"
+              className="flex shrink-0 items-center gap-1 text-sm font-semibold text-accent-400 hover:underline"
+            >
+              {text.allNews}
+              <Icon name="arrowRight" className="size-4" />
             </Link>
           </div>
           {latest.length === 0 ? (
@@ -111,18 +169,18 @@ export default async function HomePage() {
           ) : (
             <ul className="mt-4 divide-y divide-line">
               {latest.map((entry) => (
-                <li key={entry.id} className="flex flex-col gap-1 py-3.5 sm:flex-row sm:gap-6">
-                  <time dateTime={entry.date} className="shrink-0 text-sm text-subtle sm:w-28">
+                <li key={entry.id} className="grid gap-1 py-4 first:pt-2 last:pb-0 sm:grid-cols-12 sm:gap-2">
+                  <time dateTime={entry.date} className="font-mono text-[13px] text-muted sm:col-span-3">
                     {format.calendarDate(entry.date)}
                   </time>
-                  <p className="text-sm text-fg">{entry.text}</p>
+                  <p className="text-sm text-fg sm:col-span-9">{entry.text}</p>
                 </li>
               ))}
             </ul>
           )}
         </div>
-        <div className="flex flex-col gap-4 rounded-2xl border border-line bg-surface p-6 sm:p-8">
-          <h2 className="font-display text-xl font-bold tracking-tight text-accent-400">{text.contactTitle}</h2>
+        <div className="flex flex-col gap-4 rounded-2xl border border-line bg-surface p-6 shadow-sm sm:p-8 lg:col-span-5">
+          <h2 className="font-display text-[22px] leading-7 font-bold text-accent-300">{text.contactTitle}</h2>
           <p className="text-sm leading-relaxed text-muted">{text.contactText}</p>
           <a
             href={`mailto:${SITE.contactEmail}`}

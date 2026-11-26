@@ -3,7 +3,7 @@ import { cn } from "@/lib/cn";
 
 const variantStyles = {
   primary: "bg-accent-400 text-accent-ink hover:bg-accent-300",
-  secondary: "bg-overlay text-fg hover:bg-highest",
+  secondary: "bg-overlay text-accent-400 hover:bg-highest",
   danger: "bg-loss/10 text-loss ring-1 ring-inset ring-loss/30 hover:bg-loss/15",
   ghost: "bg-raised text-muted hover:bg-overlay hover:text-fg",
 } as const;

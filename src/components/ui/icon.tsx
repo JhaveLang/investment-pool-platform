@@ -15,6 +15,7 @@ const icons = {
   arrowUp: <path d="M12 16V5M7 9.5l5-5 5 5M5 20h14" />,
   arrowDownLeft: <path d="M17 7 7 17M7 9v8h8" />,
   arrowUpRight: <path d="M7 17 17 7M9 7h8v8" />,
+  arrowRight: <path d="M5 12h14M13 6l6 6-6 6" />,
   inbox: <path d="M3 13h5l1.5 3h5L16 13h5M5.5 5h13L21 13v6H3v-6z" />,
   send: <path d="M20 4 10 14M20 4l-6 16-4-6-6-4z" />,
   users: (

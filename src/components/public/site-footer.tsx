@@ -26,7 +26,7 @@ export async function SiteFooter() {
   ];
 
   return (
-    <footer className="mt-16 border-t border-line bg-sidebar/50">
+    <footer className="mt-16 border-t border-line bg-surface">
       <div className={cn(publicContainer, "grid gap-10 py-12 md:grid-cols-[minmax(0,1fr)_auto]")}>
         <div>
           <Brand />

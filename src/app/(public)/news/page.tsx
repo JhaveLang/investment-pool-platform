@@ -29,7 +29,7 @@ export default async function NewsPage() {
                 <ol className="mt-3 divide-y divide-line rounded-2xl border border-line bg-surface">
                   {entries.map((entry) => (
                     <li key={entry.id} className="flex flex-col gap-1 px-5 py-4 sm:flex-row sm:gap-6">
-                      <time dateTime={entry.date} className="shrink-0 text-sm font-medium text-accent-400 sm:w-28">
+                      <time dateTime={entry.date} className="shrink-0 font-mono text-[13px] font-medium text-accent-400 sm:w-28">
                         {format.calendarDate(entry.date)}
                       </time>
                       <p className="text-[15px] leading-relaxed text-fg">{entry.text}</p>

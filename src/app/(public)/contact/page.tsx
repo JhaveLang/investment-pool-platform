@@ -30,7 +30,7 @@ export default async function ContactPage() {
               <span className="grid size-10 place-items-center rounded-lg bg-accent-400/10 text-accent-400">
                 <Icon name={channel.icon} className="size-5" />
               </span>
-              <h2 className="font-display text-lg font-semibold text-accent-400">{channel.title}</h2>
+              <h2 className="font-display text-lg font-semibold text-accent-300">{channel.title}</h2>
               <p className="text-sm text-muted">{channel.text}</p>
               <a
                 href={`mailto:${channel.email}`}

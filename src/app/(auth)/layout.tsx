@@ -48,7 +48,7 @@ export default async function AuthLayout({ children }: { children: ReactNode }) 
           </ul>
         </section>
 
-        <div className="w-full">
+        <div className="w-full min-w-0">
           <p className="mb-6 text-center text-sm text-muted lg:hidden">{messages.app.description}</p>
           <div className="rounded-2xl border border-line bg-surface p-6 shadow-[0_16px_32px_-8px_rgba(29,22,33,0.16)] sm:p-8">
             {children}
