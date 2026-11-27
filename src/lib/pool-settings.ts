@@ -1,5 +1,4 @@
 import type { Locale } from "@/i18n/config";
-import type { IsoDate } from "./calendar";
 import { maxWithdrawalPayoutCents, type PaymentMethod } from "./fees";
 import { MIN_TRANSACTION_CENTS } from "./money";
 
@@ -14,9 +13,6 @@ export const LOWEST_WITHDRAWAL_MAX_CENTS = 100_000; // 1.000,00 €
 export type PoolSettings = {
   /** Closed: no new deposits. Submitted ones can still be reconciled, and withdrawals stay possible. */
   depositsOpen: boolean;
-  /** First and last day for new deposits, both included; null for no limit on that side. */
-  depositsFrom: IsoDate | null;
-  depositsUntil: IsoDate | null;
   depositMinCents: number;
   depositMaxCents: number;
   withdrawalMinCents: number;
@@ -24,22 +20,6 @@ export type PoolSettings = {
   noticeDe: string | null;
   noticeEn: string | null;
 };
-
-export type DepositState = "open" | "closed" | "notYet" | "ended";
-
-/** Whether the pool takes new deposits on a day; closed by the admin it doesn't, whatever the dates say. */
-export function depositState(
-  settings: Pick<PoolSettings, "depositsOpen" | "depositsFrom" | "depositsUntil">,
-  today: IsoDate,
-): DepositState {
-  if (!settings.depositsOpen) {
-    return "closed";
-  }
-  if (settings.depositsFrom !== null && today < settings.depositsFrom) {
-    return "notYet";
-  }
-  return settings.depositsUntil !== null && today > settings.depositsUntil ? "ended" : "open";
-}
 
 /** Limits of one request, for the amount the investor enters. */
 export type AmountLimits = { minCents: number; maxCents: number };

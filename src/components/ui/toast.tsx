@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
+import { buttonStyles } from "./button";
 import { Icon, type IconName } from "./icon";
 
 /** Bottom-right stack for short-lived messages, above the phone dock; screen readers announce new ones politely. */
@@ -49,7 +50,7 @@ export function Toast({ icon, iconTone, label, children, href, linkLabel, onDism
         type="button"
         onClick={onDismiss}
         aria-label={dismissLabel}
-        className="grid size-7 shrink-0 place-items-center rounded-lg text-subtle transition-colors hover:bg-highest hover:text-fg"
+        className={buttonStyles({ variant: "ghost", size: "iconSm" })}
       >
         <Icon name="close" className="size-4" />
       </button>

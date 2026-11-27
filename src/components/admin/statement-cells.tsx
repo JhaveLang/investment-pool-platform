@@ -1,4 +1,5 @@
 import { Popup } from "@/components/ui/popup";
+import { buttonStyles } from "@/components/ui/button";
 import { getI18n } from "@/i18n/server";
 import type { IsoMonth } from "@/lib/calendar";
 import { cn } from "@/lib/cn";
@@ -54,7 +55,7 @@ export async function StatementMovements({ movements, investorName, month }: Sta
       title={text.miscTitle(monthLabel)}
       description={text.miscDescription(investorName)}
       triggerLabel={text.showMisc(investorName, monthLabel)}
-      triggerClassName="-mx-1.5 flex items-center gap-3 rounded-md px-1.5 py-0.5 text-left text-[13px] whitespace-nowrap transition-colors hover:bg-raised"
+      triggerClassName={buttonStyles({ variant: "ghost", size: "sm", className: "-mx-1.5 gap-3 px-1.5 text-left font-normal whitespace-nowrap" })}
       trigger={
         <>
           {movements.slice(0, TRIMMED_MOVEMENTS).map((movement) => (

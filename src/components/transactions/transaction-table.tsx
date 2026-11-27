@@ -16,6 +16,9 @@ const entryIcons: Record<LedgerEntryType, { icon: IconName; tile: string }> = {
   deposit_fee: { icon: "receipt", tile: "bg-overlay text-subtle" },
   withdrawal_fee: { icon: "receipt", tile: "bg-overlay text-subtle" },
   monthly_return: { icon: "trendingUp", tile: "bg-warn/10 text-warn" },
+  promo_transfer: { icon: "arrowUpRight", tile: "bg-overlay text-muted" },
+  promo_principal_return: { icon: "arrowDownLeft", tile: "bg-gain/10 text-gain" },
+  promo_return: { icon: "trendingUp", tile: "bg-gain/10 text-gain" },
 };
 
 function EntryIcon({ entry, className }: { entry: LedgerRow; className?: string }) {

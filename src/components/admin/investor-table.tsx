@@ -16,8 +16,6 @@ import { StatementAmount, StatementMovements } from "./statement-cells";
 // When the table is wider than the screen it scrolls sideways; the actions stay pinned to the right edge so they are
 // always in reach (where everything fits, pinning changes nothing).
 const pinnedActions = "sticky right-0 shadow-[-12px_0_12px_-12px_rgba(29,22,33,0.16)]";
-// The actions are square icon buttons; aria-labels name action and investor, the title shows the action on hover.
-const iconButton = "w-8 px-0";
 
 type InvestorTableProps = {
   investors: InvestorRow[];
@@ -97,7 +95,7 @@ export async function InvestorTable({ investors, month, statements }: InvestorTa
                     href={`/admin/investors/${investor.id}`}
                     aria-label={actions.viewInvestor(investor.fullName)}
                     title={actions.view}
-                    className={buttonStyles({ size: "sm", className: iconButton })}
+                    className={buttonStyles({ size: "iconSm" })}
                   >
                     <Icon name="eye" className="size-4" />
                   </Link>
@@ -105,7 +103,7 @@ export async function InvestorTable({ investors, month, statements }: InvestorTa
                     href={`/admin/investors/${investor.id}/edit`}
                     aria-label={actions.editInvestor(investor.fullName)}
                     title={actions.edit}
-                    className={buttonStyles({ variant: "secondary", size: "sm", className: iconButton })}
+                    className={buttonStyles({ variant: "secondary", size: "iconSm" })}
                   >
                     <Icon name="pencil" className="size-4" />
                   </Link>
@@ -115,7 +113,7 @@ export async function InvestorTable({ investors, month, statements }: InvestorTa
                     download
                     aria-label={exportText.rowLabel(investor.fullName)}
                     title={exportText.rowTitle}
-                    className={buttonStyles({ variant: "secondary", size: "sm", className: iconButton })}
+                    className={buttonStyles({ variant: "secondary", size: "iconSm" })}
                   >
                     <Icon name="download" className="size-4" />
                   </a>

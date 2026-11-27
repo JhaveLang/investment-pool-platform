@@ -1,7 +1,7 @@
 import { setLocaleAction } from "@/actions/locale";
 import { LOCALE_LABELS, LOCALES } from "@/i18n/config";
 import { getI18n } from "@/i18n/server";
-import { cn } from "@/lib/cn";
+import { buttonStyles } from "@/components/ui/button";
 import { keepsPage } from "@/lib/keeps-page";
 
 /** DE | EN toggle. A plain form posting to a Server Action, so it works without client JavaScript. */
@@ -15,7 +15,7 @@ export async function LocaleSwitcher() {
       {...keepsPage}
       role="group"
       aria-label={messages.nav.language}
-      className="flex rounded-full bg-surface p-1 ring-1 ring-line ring-inset"
+      className="inline-flex shrink-0 items-center gap-0.5 rounded-xs border border-line-strong bg-surface p-0.5"
     >
       {LOCALES.map((locale) => {
         const isActive = locale === activeLocale;
@@ -28,10 +28,11 @@ export async function LocaleSwitcher() {
             lang={locale}
             title={LOCALE_LABELS[locale].name}
             aria-pressed={isActive}
-            className={cn(
-              "label-caps rounded-full px-2.5 py-1 transition-colors",
-              isActive ? "bg-overlay text-fg" : "text-subtle hover:text-fg",
-            )}
+            className={buttonStyles({
+              size: "sm",
+              variant: isActive ? "selected" : "ghost",
+              className: "min-h-6 px-2 text-xs",
+            })}
           >
             {LOCALE_LABELS[locale].short}
           </button>

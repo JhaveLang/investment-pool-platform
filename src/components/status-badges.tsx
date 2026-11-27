@@ -24,6 +24,9 @@ const entryTypeTones: Record<LedgerEntryType, BadgeTone> = {
   deposit_fee: "neutral",
   withdrawal_fee: "neutral",
   monthly_return: "success",
+  promo_transfer: "info",
+  promo_principal_return: "success",
+  promo_return: "success",
 };
 
 export async function DepositStatusBadge({ status }: { status: DepositStatus }) {
@@ -53,6 +56,9 @@ export async function EntryTypeBadge({ entryType }: { entryType: LedgerEntryType
 export async function EntryStatusBadge({ entry }: { entry: LedgerRow }) {
   const { messages } = await getI18n();
   const isReversal = entry.entryType === "deposit_reversal" || entry.entryType === "withdrawal_reversal";
+  if (entry.entryType === "promo_return") {
+    return <Badge tone="success">{messages.transactions.booked}</Badge>;
+  }
   if (!isReversal && entry.depositStatus) {
     return <DepositStatusBadge status={entry.depositStatus} />;
   }

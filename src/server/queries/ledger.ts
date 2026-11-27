@@ -8,6 +8,7 @@ import {
   accounts,
   deposits,
   ledgerEntries,
+  promoBookings,
   returnPeriods,
   users,
   withdrawals,
@@ -23,6 +24,7 @@ import {
 export const ledgerReference = sql<string | null>`coalesce(
   ${deposits.reference},
   ${withdrawals.reference},
+  ${promoBookings.reference},
   'RD-' || to_char(${returnPeriods.periodStart}, 'YYYY-MM')
 )`;
 
@@ -84,6 +86,7 @@ export async function listLedgerEntries(options: ListLedgerOptions): Promise<Pag
       .leftJoin(deposits, eq(ledgerEntries.depositId, deposits.id))
       .leftJoin(withdrawals, eq(ledgerEntries.withdrawalId, withdrawals.id))
       .leftJoin(returnPeriods, eq(ledgerEntries.returnPeriodId, returnPeriods.id))
+      .leftJoin(promoBookings, eq(ledgerEntries.promoBookingId, promoBookings.id))
       .where(filter)
       .orderBy(direction(ledgerEntries.createdAt), direction(ledgerEntries.id))
       .limit(pageSize)

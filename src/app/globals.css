@@ -1,8 +1,8 @@
-@import "tailwindcss";
+@import "tailwindcss" source("..");
 
 /*
  * Bitcoin Magazin Pool design, after the "enhanced landing" design file: a soft pink canvas, white cards, near-black
- * text, plum (#4d245b) for the brand, the active item and the primary action, deep plum (#350c44) for its hover and
+ * text, plum (#563364) for the brand, the active item and the primary action, deep plum (#350c44) for its hover and
  * the website's headings, greyed lilac (#cfc3ce) for lines.
  * - Surfaces step up with elevation: canvas (soft pink) → surface (white cards, sidebar) → raised (rows, inner
  *   panels) → overlay (hover, active, secondary buttons) → highest; `well` is the recessed input/stat ground.
@@ -37,7 +37,7 @@
   --color-subtle: #6b616b;
 
   --color-accent-300: #350c44;
-  --color-accent-400: #4d245b;
+  --color-accent-400: #563364;
   --color-accent-500: #4d245b;
   --color-accent-600: #350c44;
   --color-accent-ink: #ffffff;

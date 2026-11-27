@@ -3,6 +3,7 @@
 import { useId, useRef, type ReactNode } from "react";
 import { useMessages } from "@/i18n/client";
 import { cn } from "@/lib/cn";
+import { buttonStyles } from "./button";
 import { Icon } from "./icon";
 
 const sizeStyles = {
@@ -66,7 +67,7 @@ export function Popup({
         aria-label={triggerLabel}
         title={triggerTitle}
         onClick={() => dialogRef.current?.showModal()}
-        className={triggerClassName}
+        className={triggerClassName ?? buttonStyles({ variant: "secondary" })}
       >
         {trigger}
       </button>
@@ -97,7 +98,7 @@ export function Popup({
             type="button"
             aria-label={messages.common.close}
             onClick={close}
-            className="-mt-1 -mr-1 grid size-8 shrink-0 place-items-center rounded-lg text-muted transition-colors hover:bg-highest hover:text-fg"
+            className={buttonStyles({ variant: "ghost", size: "iconSm", className: "-mt-1 -mr-1" })}
           >
             <Icon name="close" className="size-4" />
           </button>

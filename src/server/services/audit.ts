@@ -7,7 +7,7 @@ import { notifyLiveListeners } from "@/server/notifications";
 export type AuditEntry = {
   actorUserId: string | null;
   action: AuditAction;
-  entityType?: "user" | "deposit" | "withdrawal" | "return_period" | "report" | "news" | "pool";
+  entityType?: "user" | "deposit" | "withdrawal" | "return_period" | "report" | "news" | "pool" | "promotion" | "promo_booking" | "promo_maturity_batch";
   entityId?: string;
   metadata?: Record<string, unknown>;
   ipAddress?: string | null;
@@ -19,7 +19,7 @@ export type AuditEntry = {
  * Entries the admin or the affected investor should see at once also update their open
  * pages; the update goes out only when that same transaction commits.
  */
-export async function recordAudit(executor: DbExecutor, entry: AuditEntry): Promise<void> {
+export async function recordAudit(executor: DbExecutor, entry: AuditEntry): Promise<number> {
   const [logged] = await executor
     .insert(auditLogs)
     .values({
@@ -34,4 +34,5 @@ export async function recordAudit(executor: DbExecutor, entry: AuditEntry): Prom
   if (isLiveNotificationAction(entry.action)) {
     await notifyLiveListeners(executor, logged.id);
   }
+  return logged.id;
 }

@@ -1,6 +1,6 @@
 import "server-only";
 import { asc, eq, inArray, sql } from "drizzle-orm";
-import { daysInMonth, firstDayOfMonth, lastDayOfMonth, type IsoMonth } from "@/lib/calendar";
+import { daysInMonth, firstDayOfMonth, lastDayOfMonth, todayIsoDate, type IsoMonth } from "@/lib/calendar";
 import { DomainError } from "@/lib/errors";
 import { calculatePeriodReturn, pausedDaysBetween, sumCapitalDays, type CapitalChange } from "@/lib/returns";
 import { getDb, type DbExecutor } from "@/server/db/client";
@@ -8,9 +8,12 @@ import { accounts, returnPeriods, users, type ReturnPeriod } from "@/server/db/s
 import {
   countPendingDepositsEarningBy,
   countPendingWithdrawalsRequestedBy,
+  loadActivePromoStandardReserveCents,
   loadCapitalChanges,
+  loadLockedPromoCapital,
   loadPausedRanges,
   loadReservedPayouts,
+  loadReservedPromoBookings,
 } from "@/server/queries/accrual";
 import { getReturnSchedule } from "@/server/queries/returns";
 import { recordAudit } from "./audit";
@@ -102,6 +105,13 @@ async function calculateMonthlyReturn(
     executor,
     accountRows.map((account) => account.accountId),
   );
+  const reservedPromoByAccount = await loadReservedPromoBookings(executor, accountRows.map((account) => account.accountId));
+  const promoFloorByAccount = new Map(await Promise.all(accountRows.map(async (account) => [account.accountId, await loadActivePromoStandardReserveCents(executor, account.accountId)] as const)));
+  const promoLockedByAccount = await loadLockedPromoCapital(
+    executor,
+    accountRows.map((account) => account.accountId),
+    todayIsoDate(),
+  );
 
   const pausedByAccount = await loadPausedRanges(executor, periodEnd);
 
@@ -113,8 +123,9 @@ async function calculateMonthlyReturn(
     if (averageCapitalCents === 0) {
       continue;
     }
-    const unreservedCents = Math.max(0, account.balanceCents - (reservedByAccount.get(account.accountId) ?? 0));
-    const cappedReturnCents = Math.max(returnCents, -unreservedCents);
+    const unreservedCents = Math.max(0, account.balanceCents - (reservedByAccount.get(account.accountId) ?? 0) - (reservedPromoByAccount.get(account.accountId) ?? 0) - (promoFloorByAccount.get(account.accountId) ?? 0));
+    const lossCapacity = Math.max(0, unreservedCents - (promoLockedByAccount.get(account.accountId) ?? 0));
+    const cappedReturnCents = Math.max(returnCents, -lossCapacity);
     rows.push({
       accountId: account.accountId,
       investorName: account.investorName,
@@ -155,7 +166,7 @@ type BookMonthlyReturnInput = {
  * all in one transaction. Bookings are serialised by an advisory lock, and every account
  * row is locked in id order, so balances can't change between calculation and posting.
  */
-export async function bookMonthlyReturn(input: BookMonthlyReturnInput): Promise<ReturnPeriod> {
+export async function bookMonthlyReturn(input: BookMonthlyReturnInput): Promise<ReturnPeriod & { auditLogId: number }> {
   return getDb().transaction(async (tx) => {
     await tx.execute(sql`select pg_advisory_xact_lock(hashtext('return_periods'))`);
     await assertBookable(tx, input.month);
@@ -191,7 +202,7 @@ export async function bookMonthlyReturn(input: BookMonthlyReturnInput): Promise<
       })),
     );
 
-    await recordAudit(tx, {
+    const auditLogId = await recordAudit(tx, {
       actorUserId: input.adminUserId,
       action: "returns.booked",
       entityType: "return_period",
@@ -206,6 +217,6 @@ export async function bookMonthlyReturn(input: BookMonthlyReturnInput): Promise<
       ipAddress: input.ipAddress,
     });
 
-    return period;
+    return { ...period, auditLogId };
   });
 }

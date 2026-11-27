@@ -91,6 +91,7 @@ export async function DepositReviewTable({ deposits }: { deposits: DepositReview
               <TableCell className="whitespace-nowrap">
                 <p className="reference text-xs text-muted">{deposit.reference}</p>
                 <p className="text-xs text-subtle">{messages.paymentMethods[deposit.method]}</p>
+                {deposit.promoName && deposit.promoTermMonths ? <p className="mt-1 text-xs font-medium text-accent-400">{deposit.promoName} · {messages.deposits.promoTermValue(deposit.promoTermMonths)}</p> : null}
               </TableCell>
               <AmountCell
                 amountCents={deposit.amountCents}

@@ -275,19 +275,20 @@ export function EditableInvestorCode({ userId, code, investorName }: EditableInv
 
   if (!draft) {
     return (
-      <button
-        type="button"
+      <Button
+        variant="ghost"
+        size="sm"
         onClick={() => editor.startEditing(userId, code)}
         title={text.editTitle}
         aria-label={text.editLabel(code, investorName)}
-        className="group reference -mx-1 inline-flex items-center gap-1.5 rounded px-1 underline decoration-line-strong decoration-dotted underline-offset-4 transition-colors hover:text-fg hover:decoration-accent-400 focus-visible:outline-2 focus-visible:outline-accent-400"
+        className="group reference -mx-1 gap-1.5 px-1 underline decoration-line-strong decoration-dotted underline-offset-4 hover:decoration-accent-400"
       >
         {code}
         <Icon
           name="pencil"
           className="size-3 text-accent-400 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
         />
-      </button>
+      </Button>
     );
   }
 

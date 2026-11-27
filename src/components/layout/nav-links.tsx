@@ -23,7 +23,7 @@ export function NavLinks({ items, className }: { items: NavItem[]; className?: s
             aria-current={isActive ? "page" : undefined}
             className={cn(
               "flex items-center gap-3 rounded-lg px-4 py-2.5 text-[13px] font-medium transition-colors",
-              isActive ? "bg-accent-500 font-semibold text-accent-deep" : "text-muted hover:bg-overlay hover:text-fg",
+              isActive ? "bg-accent-400 font-semibold text-accent-ink" : "text-muted hover:bg-overlay hover:text-fg",
             )}
           >
             <Icon name={item.icon} className="size-5" />

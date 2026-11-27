@@ -27,7 +27,7 @@ function Section({ title, hint, children }: { title: string; hint: string; child
   );
 }
 
-/** Whether and when the pool takes deposits, the limits per request, and the notice above the investors' forms. */
+/** Whether the pool takes deposits, the limits per request, and the notice above the investors' forms. */
 export function PoolSettingsForm({ settings }: { settings: PoolSettings }) {
   const text = useMessages().admin.pool;
   const format = useFormatter();
@@ -45,15 +45,6 @@ export function PoolSettingsForm({ settings }: { settings: PoolSettings }) {
       autoComplete="off"
       required
       defaultValue={failed ? submitted[name] : format.decimal(cents)}
-      error={fieldErrors[name]}
-    />
-  );
-  const dateField = (name: "depositsFrom" | "depositsUntil", label: string) => (
-    <FormField
-      name={name}
-      type="date"
-      label={label}
-      defaultValue={failed ? submitted[name] : (settings[name] ?? "")}
       error={fieldErrors[name]}
     />
   );
@@ -83,10 +74,6 @@ export function PoolSettingsForm({ settings }: { settings: PoolSettings }) {
           <span className="mt-0.5 block max-w-prose text-[13px] text-subtle">{text.depositsOpenHint}</span>
         </span>
       </label>
-      <Section title={text.depositDates} hint={text.depositDatesHint}>
-        {dateField("depositsFrom", text.firstDay)}
-        {dateField("depositsUntil", text.lastDay)}
-      </Section>
       <Section title={text.depositLimits} hint={text.depositHint}>
         {amountField("depositMin", text.minimum, settings.depositMinCents)}
         {amountField("depositMax", text.maximum, settings.depositMaxCents)}

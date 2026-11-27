@@ -13,6 +13,7 @@ export type SessionUser = {
   id: string;
   email: string;
   fullName: string;
+  investorCode: string | null;
   role: UserRole;
 };
 
@@ -51,7 +52,7 @@ export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
   }
 
   const [sessionUser] = await getDb()
-    .select({ id: users.id, email: users.email, fullName: users.fullName, role: users.role })
+    .select({ id: users.id, email: users.email, fullName: users.fullName, investorCode: users.investorCode, role: users.role })
     .from(sessions)
     .innerJoin(users, eq(sessions.userId, users.id))
     .where(

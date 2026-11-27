@@ -20,7 +20,7 @@ export default async function NewsPage() {
         {years.length === 0 ? (
           <p className="text-sm text-subtle">{text.newsEmpty}</p>
         ) : (
-          <div className="max-w-3xl space-y-10">
+          <div className="space-y-10">
             {years.map(([year, entries]) => (
               <section key={year} aria-labelledby={`news-${year}`}>
                 <h2 id={`news-${year}`} className="label-caps text-subtle">
@@ -32,7 +32,7 @@ export default async function NewsPage() {
                       <time dateTime={entry.date} className="shrink-0 font-mono text-[13px] font-medium text-accent-400 sm:w-28">
                         {format.calendarDate(entry.date)}
                       </time>
-                      <p className="text-[15px] leading-relaxed text-fg">{entry.text}</p>
+                      <p className="min-w-0 text-[15px] leading-relaxed wrap-anywhere text-fg">{entry.text}</p>
                     </li>
                   ))}
                 </ol>

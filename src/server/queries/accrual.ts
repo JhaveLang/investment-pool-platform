@@ -5,7 +5,7 @@ import type { IsoDate } from "@/lib/calendar";
 import { APP_TIME_ZONE } from "@/lib/format";
 import { ACCRUAL_DELAY_DAYS, MINIMUM_TERM_DAYS, type CapitalChange, type PausedRange } from "@/lib/returns";
 import type { DbExecutor } from "@/server/db/client";
-import { accounts, auditLogs, deposits, ledgerEntries, returnPeriods, withdrawals } from "@/server/db/schema";
+import { accounts, auditLogs, deposits, ledgerEntries, promoBookings, returnPeriods, withdrawals } from "@/server/db/schema";
 
 // SQL counterparts of the rules in `src/lib/returns.ts`. The day counts are code constants,
 // inlined as literals so Postgres can resolve `date + integer`.
@@ -25,7 +25,10 @@ export const depositValueDate = sql<string>`coalesce(${deposits.receivedOn}, ${b
  * Needs the ledger joined with deposits, withdrawals and return periods.
  */
 const accrualStart = sql<string>`case
+  when ${ledgerEntries.entryType} in ('promo_return', 'promo_principal_return') then date_trunc('month', ${berlinDate(ledgerEntries.createdAt)}::timestamp) + interval '1 month'
+  when ${ledgerEntries.entryType} = 'promo_transfer' then ${berlinDate(promoBookings.processedAt)}
   when ${ledgerEntries.returnPeriodId} is not null then (${returnPeriods.periodStart} + interval '1 month')::date
+  when ${deposits.promoTermMonths} is not null then (${depositValueDate} + (${deposits.promoTermMonths} || ' months')::interval)::date + ${sql.raw(String(ACCRUAL_DELAY_DAYS))}
   when ${ledgerEntries.depositId} is not null then ${depositValueDate} + ${sql.raw(String(ACCRUAL_DELAY_DAYS))}
   else ${berlinDate(withdrawals.createdAt)}
 end`;
@@ -56,6 +59,7 @@ export async function loadCapitalChanges(
     .leftJoin(deposits, eq(ledgerEntries.depositId, deposits.id))
     .leftJoin(withdrawals, eq(ledgerEntries.withdrawalId, withdrawals.id))
     .leftJoin(returnPeriods, eq(ledgerEntries.returnPeriodId, returnPeriods.id))
+    .leftJoin(promoBookings, eq(ledgerEntries.promoBookingId, promoBookings.id))
     .where(sql`${accrualStart} <= ${periodEnd}::date`)
     .as("entries");
 
@@ -106,6 +110,36 @@ export async function loadReservedPayouts(executor: DbExecutor, accountIds: stri
   return new Map(rows.map((row) => [row.accountId, row.reservedCents]));
 }
 
+/** Pending promo transfers are reserved from the standard pool balance. */
+export async function loadReservedPromoBookings(
+  executor: DbExecutor,
+  accountIds: string[],
+  excludeBookingId?: string,
+): Promise<Map<string, number>> {
+  if (accountIds.length === 0) return new Map();
+  const rows = await executor
+    .select({ accountId: promoBookings.accountId, reservedCents: sql<number>`sum(${promoBookings.amountCents})`.mapWith(Number) })
+    .from(promoBookings)
+    .where(and(
+      eq(promoBookings.status, "pending"),
+      inArray(promoBookings.accountId, accountIds),
+      excludeBookingId ? ne(promoBookings.id, excludeBookingId) : undefined,
+    ))
+    .groupBy(promoBookings.accountId);
+  return new Map(rows.map((row) => [row.accountId, row.reservedCents]));
+}
+
+export async function loadReservedPromoBookingCents(executor: DbExecutor, accountId: string, excludeBookingId?: string): Promise<number> {
+  return (await loadReservedPromoBookings(executor, [accountId], excludeBookingId)).get(accountId) ?? 0;
+}
+
+/** A booked promo keeps a €1,000 floor in the standard pool until the promo matures. */
+export async function loadActivePromoStandardReserveCents(executor: DbExecutor, accountId: string): Promise<number> {
+  const [row] = await executor.select({ count: sql<number>`count(*)`.mapWith(Number) }).from(promoBookings)
+    .where(and(eq(promoBookings.accountId, accountId), eq(promoBookings.status, "booked")));
+  return row.count > 0 ? 100_000 : 0;
+}
+
 /**
  * Pending deposits that would already earn by `date` if they had arrived on their booking
  * day. Their receipt day is still unknown, so a month ending on or after `date` can't be
@@ -116,9 +150,36 @@ export async function countPendingDepositsEarningBy(executor: DbExecutor, date: 
     deposits,
     and(
       eq(deposits.status, "pending"),
-      sql`${berlinDate(deposits.createdAt)} + ${sql.raw(String(ACCRUAL_DELAY_DAYS))} <= ${date}::date`,
+      sql`(
+        (${deposits.promoOfferId} is null and ${berlinDate(deposits.createdAt)} + ${sql.raw(String(ACCRUAL_DELAY_DAYS))} <= ${date}::date)
+        or (${deposits.promoOfferId} is not null and ${deposits.promoTermMonths} is not null and (${berlinDate(deposits.createdAt)} + (${deposits.promoTermMonths} || ' months')::interval)::date + ${sql.raw(String(ACCRUAL_DELAY_DAYS))} <= ${date}::date)
+      )`,
     ),
   );
+}
+
+/** Active promo principal is protected from monthly pool losses until its fixed term matures. */
+export async function loadLockedPromoCapital(
+  executor: DbExecutor,
+  accountIds: string[],
+  today: IsoDate,
+): Promise<Map<string, number>> {
+  if (accountIds.length === 0) return new Map();
+  const rows = await executor
+    .select({
+      accountId: deposits.accountId,
+      lockedCents: sql<number>`sum(${deposits.amountCents} - ${deposits.feeCents})`.mapWith(Number),
+    })
+    .from(deposits)
+    .where(and(
+      inArray(deposits.accountId, accountIds),
+      ne(deposits.status, "rejected"),
+      isNotNull(deposits.creditedAt),
+      isNotNull(deposits.promoTermMonths),
+      sql`(${depositValueDate} + (${deposits.promoTermMonths} || ' months')::interval)::date > ${today}::date`,
+    ))
+    .groupBy(deposits.accountId);
+  return new Map(rows.map((row) => [row.accountId, row.lockedCents]));
 }
 
 /**
@@ -148,7 +209,10 @@ export async function loadLockedCapital(
   accountId: string,
   today: IsoDate,
 ): Promise<LockedCapital> {
-  const unlocksOn = sql`${depositValueDate} + ${sql.raw(String(MINIMUM_TERM_DAYS))}`;
+  const unlocksOn = sql`case
+    when ${deposits.promoTermMonths} is not null then (${depositValueDate} + (${deposits.promoTermMonths} || ' months')::interval)::date
+    else ${depositValueDate} + ${sql.raw(String(MINIMUM_TERM_DAYS))}
+  end`;
   const [locked] = await executor
     .select({
       lockedCents: sql<number>`coalesce(sum(${deposits.amountCents} - ${deposits.feeCents}), 0)`.mapWith(Number),

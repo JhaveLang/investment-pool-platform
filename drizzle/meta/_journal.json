@@ -78,6 +78,48 @@
       "when": 1795581627680,
       "tag": "0010_pool_deposit_dates",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1795673817640,
+      "tag": "0011_stormy_wendigo",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1795700000000,
+      "tag": "0012_promo_return_ledger_type",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1795700001000,
+      "tag": "0013_promo_deposit_terms",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1795700002000,
+      "tag": "0014_promo_offer_examples",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1795700003000,
+      "tag": "0015_promo_booking_enums",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1795700004000,
+      "tag": "0016_promo_bookings",
+      "breakpoints": true
     }
   ]
 }

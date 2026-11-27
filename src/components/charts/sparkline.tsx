@@ -1,5 +1,5 @@
 import { cn } from "@/lib/cn";
-import { niceScale, plotDatedValues, stepAreaPath, stepLinePath, type DatedValue } from "./geometry";
+import { niceScale, plotDatedValues, smoothLinePath, type DatedValue } from "./geometry";
 
 type SparklineProps = {
   values: DatedValue[];
@@ -8,13 +8,14 @@ type SparklineProps = {
   className?: string;
 };
 
-/** A small step-area trend with a dot on today's value; renders nothing with fewer than two days. */
+/** A smooth balance trend with a dot on today's value. */
 export function Sparkline({ values, id, className }: SparklineProps) {
   if (values.length < 2) {
     return null;
   }
   const scale = niceScale(Math.max(...values.map((value) => value.cents)), 1);
   const points = plotDatedValues(values, scale.max);
+  const line = smoothLinePath(points);
   const last = points[points.length - 1];
   const gradientId = `sparkline-${id}`;
 
@@ -27,9 +28,9 @@ export function Sparkline({ values, id, className }: SparklineProps) {
             <stop offset="100%" stopColor="var(--color-accent-400)" stopOpacity="0" />
           </linearGradient>
         </defs>
-        <path d={stepAreaPath(points)} fill={`url(#${gradientId})`} />
+        <path d={`${line} V100 H${points[0].x} Z`} fill={`url(#${gradientId})`} />
         <path
-          d={stepLinePath(points)}
+          d={line}
           fill="none"
           stroke="var(--color-accent-400)"
           strokeWidth={2}

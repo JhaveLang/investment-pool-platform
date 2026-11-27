@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useRef, type ReactNode } from "react";
 import { useMessages } from "@/i18n/client";
-import { Button } from "./button";
+import { Button, buttonStyles } from "./button";
 import { Icon } from "./icon";
 
 type OneTimeDialogProps = {
@@ -62,7 +62,7 @@ export function OneTimeDialog({ param, title, description, dismissLabel, action,
           type="button"
           aria-label={messages.common.close}
           onClick={close}
-          className="-mt-1 -mr-1 grid size-8 shrink-0 place-items-center rounded-lg text-muted transition-colors hover:bg-highest hover:text-fg"
+          className={buttonStyles({ variant: "ghost", size: "iconSm", className: "-mt-1 -mr-1" })}
         >
           <Icon name="close" className="size-4" />
         </button>
@@ -71,7 +71,7 @@ export function OneTimeDialog({ param, title, description, dismissLabel, action,
         {children}
         <div className="mt-6 flex flex-wrap justify-end gap-2">
           {/* The dialog uses the "overlay" surface, so the secondary button takes the next layer up to stay visible. */}
-          <Button variant="secondary" onClick={close} className="bg-highest hover:bg-highest/70">
+          <Button variant="secondary" onClick={close}>
             {dismissLabel}
           </Button>
           {action}

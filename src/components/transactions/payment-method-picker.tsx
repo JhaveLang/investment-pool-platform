@@ -35,8 +35,8 @@ export function PaymentMethodPicker({ legend, value, onChange, describe, error }
             <label
               key={method}
               className={cn(
-                "flex cursor-pointer items-center gap-3 rounded-lg p-3 ring-1 transition-colors ring-inset has-focus-visible:ring-2 has-focus-visible:ring-accent-400",
-                isSelected ? "bg-accent-400/5 ring-accent-400/50" : "bg-raised ring-transparent hover:bg-overlay",
+                "flex cursor-pointer items-center gap-3 rounded-lg p-3 ring-1 transition-colors ring-inset has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-accent-400",
+                isSelected ? "bg-accent-400 text-accent-ink ring-accent-400" : "bg-raised text-fg ring-transparent hover:bg-overlay",
               )}
             >
               <input
@@ -50,14 +50,14 @@ export function PaymentMethodPicker({ legend, value, onChange, describe, error }
               <span
                 className={cn(
                   "grid size-10 shrink-0 place-items-center rounded-lg",
-                  isSelected ? "bg-accent-400/10 text-accent-400" : "bg-overlay text-muted",
+                  isSelected ? "bg-white/15" : "bg-overlay text-muted",
                 )}
               >
                 <Icon name={methodIcons[method]} className="size-5" />
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block font-display text-[15px] font-semibold text-fg">{methodLabels[method]}</span>
-                <span className={cn("block text-xs", isSelected ? "text-accent-400" : "text-subtle")}>
+                <span className="block font-display text-[15px] font-semibold">{methodLabels[method]}</span>
+                <span className={cn("block text-xs", !isSelected && "text-subtle")}>
                   {describe(method)}
                 </span>
               </span>
@@ -65,7 +65,7 @@ export function PaymentMethodPicker({ legend, value, onChange, describe, error }
                 aria-hidden
                 className={cn(
                   "grid size-5 shrink-0 place-items-center rounded-full ring-1",
-                  isSelected ? "bg-accent-400 text-accent-ink ring-accent-400" : "ring-line-strong",
+                  isSelected ? "ring-accent-ink" : "ring-line-strong",
                 )}
               >
                 {isSelected ? (

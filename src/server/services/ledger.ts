@@ -16,9 +16,10 @@ export async function lockAccountForUser(tx: DbTransaction, userId: string): Pro
 
 /** Every entry belongs to exactly one deposit, withdrawal or booked return month. */
 type LedgerSource =
-  | { depositId: string; withdrawalId?: never; returnPeriodId?: never }
-  | { withdrawalId: string; depositId?: never; returnPeriodId?: never }
-  | { returnPeriodId: string; depositId?: never; withdrawalId?: never };
+  | { depositId: string; withdrawalId?: never; returnPeriodId?: never; promoBookingId?: never }
+  | { withdrawalId: string; depositId?: never; returnPeriodId?: never; promoBookingId?: never }
+  | { returnPeriodId: string; depositId?: never; withdrawalId?: never; promoBookingId?: never }
+  | { promoBookingId: string; depositId?: never; withdrawalId?: never; returnPeriodId?: never };
 
 type LedgerPosting = {
   accountId: string;
@@ -66,6 +67,7 @@ export async function postLedgerEntries(tx: DbTransaction, postings: readonly Le
       depositId: posting.depositId ?? null,
       withdrawalId: posting.withdrawalId ?? null,
       returnPeriodId: posting.returnPeriodId ?? null,
+      promoBookingId: posting.promoBookingId ?? null,
       createdByUserId: posting.createdByUserId,
     };
   });

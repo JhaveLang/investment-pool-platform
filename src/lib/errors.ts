@@ -14,7 +14,11 @@ export type DomainErrorCode =
   | "PREVIEW_OUTDATED"
   | "WRONG_PASSWORD"
   | "ACCOUNT_DEACTIVATED"
-  | "DEPOSITS_CLOSED";
+  | "DEPOSITS_CLOSED"
+  | "PROMO_NOT_BOOKABLE"
+  | "PROMO_DEPOSIT_LIMIT"
+  | "PROMO_AMOUNT_INVALID"
+  | "PROMO_INSUFFICIENT_STANDARD_BALANCE";
 
 /**
  * An expected business rule violation. Server actions translate the code into a

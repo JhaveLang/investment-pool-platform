@@ -7,7 +7,6 @@ import { Icon } from "@/components/ui/icon";
 import { Pagination } from "@/components/ui/pagination";
 import { segmentStyles } from "@/components/ui/segmented";
 import { getI18n, pageMetadata } from "@/i18n/server";
-import { cn } from "@/lib/cn";
 import { ENTRY_GROUPS, type EntryGroup } from "@/lib/ledger-groups";
 import { firstParam, parseChoiceParam, parsePageParam } from "@/lib/pagination";
 import { requireInvestor } from "@/server/auth/guards";
@@ -72,7 +71,7 @@ export default async function TransactionsPage({ searchParams }: PageProps<"/tra
                   key={sortLink.order}
                   href={query ? `/transactions?${query}` : "/transactions"}
                   aria-current={order === sortLink.order ? "true" : undefined}
-                  className={cn(segmentStyles(order === sortLink.order), "rounded-md text-center")}
+                  className={segmentStyles(order === sortLink.order)}
                 >
                   {sortLink.label}
                 </Link>

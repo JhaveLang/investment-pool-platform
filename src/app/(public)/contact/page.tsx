@@ -10,7 +10,7 @@ import { cn } from "@/lib/cn";
 
 export const generateMetadata = pageMetadata((messages) => messages.site.contactPageTitle);
 
-/** The two email addresses: general enquiries, and the billing team that sends the statements (no replies). */
+/** The two contacts: general enquiries, and the billing team that sends the statements. */
 export default async function ContactPage() {
   const { messages } = await getI18n();
   const text = messages.site;
@@ -24,9 +24,9 @@ export default async function ContactPage() {
     <>
       <PublicPageHeader title={text.contactPageTitle} description={text.contactPageSubtitle} />
       <div className={cn(publicContainer, "py-10 sm:py-14")}>
-        <div className="grid max-w-4xl gap-4 md:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-2">
           {channels.map((channel) => (
-            <section key={channel.email} className="flex flex-col gap-3 rounded-2xl border border-line bg-surface p-6">
+            <section key={channel.title} className="flex flex-col gap-3 rounded-2xl border border-line bg-surface p-6">
               <span className="grid size-10 place-items-center rounded-lg bg-accent-400/10 text-accent-400">
                 <Icon name={channel.icon} className="size-5" />
               </span>
@@ -41,7 +41,7 @@ export default async function ContactPage() {
             </section>
           ))}
         </div>
-        <div className="mt-8 flex max-w-4xl flex-col gap-4 rounded-2xl bg-raised p-6 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-8 flex flex-col gap-4 rounded-2xl bg-raised p-6 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm text-muted">{text.investorHint}</p>
           <Link href={account.href} className={buttonStyles({ className: "shrink-0" })}>
             <Icon name="lock" className="size-4" />

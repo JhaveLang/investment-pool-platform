@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Icon } from "@/components/ui/icon";
 import { getI18n } from "@/i18n/server";
+import { segmentStyles } from "@/components/ui/segmented";
 import { cn } from "@/lib/cn";
 import type { AccountOverview } from "@/server/queries/investor";
 
@@ -29,10 +30,7 @@ export async function MoveMoneyHeader({
               key={tab.key}
               href={tab.href}
               aria-current={isActive ? "page" : undefined}
-              className={cn(
-                "flex h-12 items-center justify-center gap-2 rounded-lg px-3 font-display text-[15px] font-semibold transition-colors",
-                isActive ? "bg-accent-500 text-accent-deep shadow-md" : "text-fg hover:bg-raised",
-              )}
+              className={cn(segmentStyles(isActive, "lg"), "px-3")}
             >
               <Icon name={tab.icon} className="size-5" />
               <span className="truncate">{tab.label}</span>

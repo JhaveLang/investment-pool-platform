@@ -99,6 +99,8 @@ export type DepositReviewRow = {
   investorEmail: string;
   reviewedAt: Date | null;
   reviewNote: string | null;
+  promoName: string | null;
+  promoTermMonths: number | null;
 };
 
 export async function listDepositsForReview(
@@ -126,6 +128,8 @@ export async function listDepositsForReview(
         investorEmail: users.email,
         reviewedAt: deposits.reviewedAt,
         reviewNote: deposits.reviewNote,
+        promoName: deposits.promoName,
+        promoTermMonths: deposits.promoTermMonths,
       })
       .from(deposits)
       .innerJoin(accounts, eq(deposits.accountId, accounts.id))

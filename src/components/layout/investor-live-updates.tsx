@@ -6,9 +6,8 @@ import { useEventStream, useToasts } from "@/components/live-events";
 import type { IconName } from "@/components/ui/icon";
 import { Toast, ToastRegion } from "@/components/ui/toast";
 import { useFormatter, useMessages } from "@/i18n/client";
-import type { Messages } from "@/i18n/dictionaries";
-import type { Formatter } from "@/lib/format";
 import {
+  describeInvestorNotification,
   investorNotificationHref,
   shouldInvestorPageRefresh,
   type InvestorNotification,
@@ -22,22 +21,6 @@ const typeIcons: Record<InvestorNotificationType, { icon: IconName; tone: string
   "withdrawal.rejected": { icon: "undo", tone: "text-warn" },
   "returns.booked": { icon: "trendingUp", tone: "text-accent-400" },
 };
-
-function describe(update: InvestorNotification, text: Messages["liveUpdates"], format: Formatter): string {
-  const reference = update.reference ?? "";
-  switch (update.type) {
-    case "deposit.reconciled":
-      return text.depositReconciled(format.currency(update.amountCents ?? 0), reference);
-    case "deposit.rejected":
-      return text.depositRejected(reference);
-    case "withdrawal.approved":
-      return text.withdrawalApproved(format.currency(update.amountCents ?? 0), reference);
-    case "withdrawal.rejected":
-      return text.withdrawalRejected(reference);
-    case "returns.booked":
-      return text.returnsBooked(format.month(update.month ?? ""), format.signedCurrency(update.amountCents ?? 0));
-  }
-}
 
 /**
  * Live updates for the signed-in investor: when the admin decides one of their requests or books a monthly return,
@@ -82,7 +65,7 @@ export function InvestorLiveUpdates({ afterId, children }: { afterId: number; ch
               onDismiss={() => dismiss(toast.id)}
               dismissLabel={text.dismiss}
             >
-              {describe(toast, text, format)}
+              {describeInvestorNotification(toast, text, format)}
             </Toast>
           );
         })}

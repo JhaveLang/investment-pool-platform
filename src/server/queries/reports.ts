@@ -1,7 +1,7 @@
 import "server-only";
 import { asc, eq } from "drizzle-orm";
 import { getDb } from "@/server/db/client";
-import { accounts, deposits, ledgerEntries, returnPeriods, users, withdrawals } from "@/server/db/schema";
+import { accounts, deposits, ledgerEntries, promoBookings, returnPeriods, users, withdrawals } from "@/server/db/schema";
 import { createdWithinRange, type DateRange } from "./filters";
 import { ledgerReference } from "./ledger";
 
@@ -26,6 +26,7 @@ export async function loadLedgerExportRows(range: DateRange) {
     .leftJoin(deposits, eq(ledgerEntries.depositId, deposits.id))
     .leftJoin(withdrawals, eq(ledgerEntries.withdrawalId, withdrawals.id))
     .leftJoin(returnPeriods, eq(ledgerEntries.returnPeriodId, returnPeriods.id))
+    .leftJoin(promoBookings, eq(ledgerEntries.promoBookingId, promoBookings.id))
     .where(createdWithinRange(ledgerEntries.createdAt, range))
     .orderBy(asc(ledgerEntries.createdAt), asc(ledgerEntries.id));
 }

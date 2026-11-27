@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { buttonStyles } from "@/components/ui/button";
 import { Icon, type IconName } from "@/components/ui/icon";
 import { isNavItemActive, type NavItem } from "@/config/navigation";
 import { useMessages } from "@/i18n/client";
@@ -14,24 +15,28 @@ type MobileDockProps = {
   moreItems?: NavItem[];
 };
 
+function dockTabStyles(active: boolean) {
+  return buttonStyles({
+    variant: active ? "selected" : "ghost",
+    size: "sm",
+    className: cn("min-h-11 min-w-0 flex-1 flex-col gap-1 px-0.5 py-1", !active && "text-muted"),
+  });
+}
+
 function DockTab({ href, icon, label, isActive }: { href: string; icon: IconName; label: string; isActive: boolean }) {
   return (
     <Link
       href={href}
       aria-current={isActive ? "page" : undefined}
-      className={cn(
-        "relative flex min-h-11 min-w-0 flex-1 flex-col items-center justify-center gap-1 py-1 transition-colors",
-        isActive ? "font-semibold text-accent-400" : "text-muted hover:text-fg",
-      )}
+      className={dockTabStyles(isActive)}
     >
       <Icon name={icon} className="size-[22px]" />
       <span className="label-caps max-w-full truncate px-0.5 text-[10px] tracking-normal normal-case">{label}</span>
-      {isActive ? <span aria-hidden className="absolute bottom-0 size-1 rounded-full bg-accent-400" /> : null}
     </Link>
   );
 }
 
-/** Fixed bottom navigation on phones, with a plum dot under the active tab. */
+/** Fixed bottom navigation on phones. */
 export function MobileDock({ items, moreItems = [] }: MobileDockProps) {
   const pathname = usePathname();
   const messages = useMessages();
@@ -76,7 +81,7 @@ export function MobileDock({ items, moreItems = [] }: MobileDockProps) {
                     aria-current={isActive ? "page" : undefined}
                     className={cn(
                       "flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium",
-                      isActive ? "bg-accent-500 font-semibold text-accent-deep" : "text-fg hover:bg-highest",
+                      isActive ? "bg-accent-400 font-semibold text-accent-ink" : "text-fg hover:bg-highest",
                     )}
                   >
                     <Icon name={item.icon} className="size-5" />
@@ -109,18 +114,12 @@ export function MobileDock({ items, moreItems = [] }: MobileDockProps) {
               aria-expanded={isSheetOpen}
               aria-controls="mobile-more-sheet"
               onClick={() => setIsSheetOpen(!isSheetOpen)}
-              className={cn(
-                "relative flex min-h-11 min-w-0 flex-1 flex-col items-center justify-center gap-1 py-1 transition-colors",
-                isSheetOpen || isMoreActive ? "font-semibold text-accent-400" : "text-muted hover:text-fg",
-              )}
+              className={dockTabStyles(isSheetOpen || isMoreActive)}
             >
               <Icon name={isSheetOpen ? "close" : "more"} className="size-[22px]" />
               <span className="label-caps max-w-full truncate px-0.5 text-[10px] tracking-normal normal-case">
                 {messages.nav.more}
               </span>
-              {isMoreActive && !isSheetOpen ? (
-                <span aria-hidden className="absolute bottom-0 size-1 rounded-full bg-accent-400" />
-              ) : null}
             </button>
           ) : null}
         </div>

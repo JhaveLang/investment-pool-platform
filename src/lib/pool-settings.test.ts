@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { depositState, limitViolation, poolNotice, withdrawalLimits } from "./pool-settings";
+import { limitViolation, poolNotice, withdrawalLimits } from "./pool-settings";
 import { getSchemas } from "./validation";
 
 describe("limitViolation", () => {
@@ -13,31 +13,6 @@ describe("limitViolation", () => {
   it("names the side that was missed by a cent", () => {
     expect(limitViolation(9_999, limits)).toBe("tooSmall");
     expect(limitViolation(1_000_001, limits)).toBe("tooLarge");
-  });
-});
-
-describe("depositState", () => {
-  const settings = { depositsOpen: true, depositsFrom: "2026-12-01", depositsUntil: "2026-12-31" };
-
-  it("is open on the first and the last day", () => {
-    expect(depositState(settings, "2026-12-01")).toBe("open");
-    expect(depositState(settings, "2026-12-31")).toBe("open");
-  });
-
-  it("tells the day before the first from the day after the last", () => {
-    expect(depositState(settings, "2026-11-30")).toBe("notYet");
-    expect(depositState(settings, "2027-01-01")).toBe("ended");
-  });
-
-  it("has no limit on a side without a date", () => {
-    expect(depositState({ ...settings, depositsFrom: null }, "2020-01-01")).toBe("open");
-    expect(depositState({ ...settings, depositsUntil: null }, "2030-01-01")).toBe("open");
-    expect(depositState({ ...settings, depositsFrom: null, depositsUntil: null }, "2026-12-15")).toBe("open");
-  });
-
-  it("stays closed while the admin has closed it, whatever the dates say", () => {
-    expect(depositState({ ...settings, depositsOpen: false }, "2026-12-15")).toBe("closed");
-    expect(depositState({ ...settings, depositsOpen: false }, "2026-11-30")).toBe("closed");
   });
 });
 
@@ -73,8 +48,6 @@ describe("poolSettingsSchema", () => {
   const { poolSettingsSchema } = getSchemas("de");
   const valid = {
     depositsOpen: true,
-    depositsFrom: "",
-    depositsUntil: "",
     depositMin: "1,00",
     depositMax: "10.000,00",
     withdrawalMin: "1,00",
@@ -90,8 +63,6 @@ describe("poolSettingsSchema", () => {
   it("reads amounts as cents and empty notices as none", () => {
     expect(poolSettingsSchema.parse({ ...valid, depositsOpen: false, noticeDe: "  Wartung  " })).toEqual({
       depositsOpen: false,
-      depositsFrom: null,
-      depositsUntil: null,
       depositMinCents: 100,
       depositMaxCents: 1_000_000,
       withdrawalMinCents: 100,
@@ -99,23 +70,6 @@ describe("poolSettingsSchema", () => {
       noticeDe: "Wartung",
       noticeEn: null,
     });
-  });
-
-  it("keeps the deposit dates, also in the past", () => {
-    const dates = { depositsFrom: "2020-01-01", depositsUntil: "2020-01-31" };
-    expect(poolSettingsSchema.parse({ ...valid, ...dates })).toMatchObject(dates);
-  });
-
-  it("refuses a last deposit day before the first, on the last day", () => {
-    expect(failedFields({ depositsFrom: "2026-12-02", depositsUntil: "2026-12-01" })).toEqual(["depositsUntil"]);
-    expect(failedFields({ depositsFrom: "2026-12-01", depositsUntil: "2026-12-01" })).toEqual([]);
-    expect(failedFields({ depositsFrom: "2026-12-01" })).toEqual([]);
-    expect(failedFields({ depositsUntil: "2026-12-01" })).toEqual([]);
-  });
-
-  it("refuses dates that don't exist", () => {
-    expect(failedFields({ depositsFrom: "2026-02-30" })).toEqual(["depositsFrom"]);
-    expect(failedFields({ depositsUntil: "bald" })).toEqual(["depositsUntil"]);
   });
 
   it("refuses a minimum above its maximum, on the maximum", () => {

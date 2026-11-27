@@ -19,6 +19,7 @@ export const config = {
     "/transactions/:path*",
     "/deposit/:path*",
     "/withdraw/:path*",
+    "/promos/:path*",
     "/profile/:path*",
     "/admin/:path*",
   ],

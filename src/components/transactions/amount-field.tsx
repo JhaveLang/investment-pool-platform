@@ -1,6 +1,7 @@
 "use client";
 
 import { useFormatter, useLocale, useMessages } from "@/i18n/client";
+import { buttonStyles } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 import { parseAmountToCents } from "@/lib/money";
 import type { AmountLimits } from "@/lib/pool-settings";
@@ -39,8 +40,7 @@ export function AmountField({
   // Written back without grouping ("11000,00"), which parses in both languages.
   const setCents = (cents: number) => onChange(format.decimal(cents));
   const currentCents = parseAmountToCents(value, locale) ?? 0;
-  const pillStyles =
-    "rounded-lg bg-raised px-2 py-2.5 text-center text-[13px] font-semibold text-fg transition-colors hover:bg-overlay";
+  const quickAmountStyle = buttonStyles({ size: "sm", variant: "secondary", className: "min-h-9 px-1" });
 
   return (
     <div>
@@ -82,7 +82,7 @@ export function AmountField({
             key={step}
             type="button"
             onClick={() => setCents(Math.min(currentCents + step, limits.maxCents))}
-            className={pillStyles}
+            className={quickAmountStyle}
             aria-label={text.addAmount(format.currency(step))}
           >
             +{format.wholeCurrency(step)}
@@ -93,7 +93,7 @@ export function AmountField({
             type="button"
             onClick={() => setCents(maxCents)}
             disabled={maxCents <= 0}
-            className={cn(pillStyles, "text-accent-400 disabled:opacity-40")}
+            className={quickAmountStyle}
           >
             {text.max}
           </button>

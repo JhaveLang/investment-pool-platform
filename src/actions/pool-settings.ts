@@ -9,14 +9,12 @@ import { requireAdmin } from "@/server/auth/guards";
 import { getClientIp } from "@/server/request";
 import { updatePoolSettings } from "@/server/services/pool-settings";
 
-/** Admin opens or closes the pool to deposits and sets the deposit dates, the limits and the notice. */
+/** Admin opens or closes the pool to deposits and sets the limits and the notice. */
 export async function updatePoolSettingsAction(_previousState: ActionState, formData: FormData): Promise<ActionState> {
   const admin = await requireAdmin();
   const { locale, messages } = await getI18n();
   const values = {
     depositsOpen: formData.get("depositsOpen") === "on" ? "on" : "",
-    depositsFrom: readFormText(formData, "depositsFrom"),
-    depositsUntil: readFormText(formData, "depositsUntil"),
     depositMin: readFormText(formData, "depositMin"),
     depositMax: readFormText(formData, "depositMax"),
     withdrawalMin: readFormText(formData, "withdrawalMin"),

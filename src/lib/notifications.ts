@@ -1,3 +1,5 @@
+import type { Messages } from "@/i18n/dictionaries";
+import type { Formatter } from "@/lib/format";
 import type { AuditAction } from "@/server/db/schema";
 
 /** Activity-log actions the admin is told about the moment they happen. */
@@ -80,6 +82,26 @@ export type InvestorNotification = {
 
 export function isInvestorNotificationType(action: string): action is InvestorNotificationType {
   return (INVESTOR_NOTIFICATION_TYPES as readonly string[]).includes(action);
+}
+
+export function describeInvestorNotification(
+  update: InvestorNotification,
+  text: Messages["liveUpdates"],
+  format: Formatter,
+): string {
+  const reference = update.reference ?? "";
+  switch (update.type) {
+    case "deposit.reconciled":
+      return text.depositReconciled(format.currency(update.amountCents ?? 0), reference);
+    case "deposit.rejected":
+      return text.depositRejected(reference);
+    case "withdrawal.approved":
+      return text.withdrawalApproved(format.currency(update.amountCents ?? 0), reference);
+    case "withdrawal.rejected":
+      return text.withdrawalRejected(reference);
+    case "returns.booked":
+      return text.returnsBooked(format.month(update.month ?? ""), format.signedCurrency(update.amountCents ?? 0));
+  }
 }
 
 /** Activity-log actions that are pushed to open pages (admin or investor). */

@@ -5,7 +5,6 @@ import { Card, CardHeader } from "@/components/ui/card";
 import { Icon, type IconName } from "@/components/ui/icon";
 import { segmentStyles } from "@/components/ui/segmented";
 import { getI18n } from "@/i18n/server";
-import { cn } from "@/lib/cn";
 import { FEE_PERCENT, PAYMENT_METHODS, type PaymentMethod } from "@/lib/fees";
 
 const methodIcons: Record<PaymentMethod, IconName> = {
@@ -30,11 +29,11 @@ export async function MoveMoneyPreview({ availableCents }: { availableCents: num
         action={<Badge tone="success">{text.creditedInstantly}</Badge>}
       />
       <div className="flex flex-col gap-4 px-5 pb-5">
-        <div className="grid grid-cols-2 gap-1 rounded-lg bg-raised p-1">
-          <Link href="/deposit" className={cn(segmentStyles(true), "rounded-md text-center")}>
+        <div className="grid grid-cols-2 gap-1">
+          <Link href="/deposit" className={segmentStyles(true)}>
             {messages.nav.deposit}
           </Link>
-          <Link href="/withdraw" className={cn(segmentStyles(false), "rounded-md bg-transparent text-center")}>
+          <Link href="/withdraw" className={segmentStyles(false)}>
             {messages.nav.withdraw}
           </Link>
         </div>

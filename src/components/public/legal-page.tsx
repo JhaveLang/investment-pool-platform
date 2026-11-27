@@ -14,7 +14,7 @@ export async function LegalPageContent({ page, title }: { page: LegalPage; title
     <>
       <PublicPageHeader title={title} description={document.intro} />
       <div className={cn(publicContainer, "py-10 sm:py-14")}>
-        <div className="max-w-3xl space-y-8">
+        <div className="space-y-8">
           {LEGAL_TEMPLATES_PENDING ? <Alert tone="warning">{messages.site.templateNotice}</Alert> : null}
           {document.sections.map((section) => (
             <section key={section.heading}>

@@ -4,7 +4,6 @@ import { todayIsoDate, type IsoDate } from "@/lib/calendar";
 import { DomainError } from "@/lib/errors";
 import { depositFeeCents, type PaymentMethod } from "@/lib/fees";
 import { formatIsoDate } from "@/lib/format";
-import { depositState } from "@/lib/pool-settings";
 import { getDb, type DbTransaction } from "@/server/db/client";
 import { accounts, deposits, type Deposit, type DepositStatus } from "@/server/db/schema";
 import { loadReservedPayoutCents } from "@/server/queries/accrual";
@@ -18,6 +17,7 @@ type CreateDepositInput = {
   amountCents: number;
   method: PaymentMethod;
   idempotencyKey: string;
+  promoOfferId?: string | null;
   ipAddress: string | null;
 };
 
@@ -35,9 +35,9 @@ function creditedCents(deposit: Deposit): number {
  * Records a deposit the investor has sent. It waits in "pending" until an admin reconciles it
  * with the actual receipt date; only then is the balance credited (see `reconcileDeposit`).
  * Re-submitting the same form (same idempotency key) returns the original deposit. Closed by the
- * admin or outside its deposit dates, the pool takes none.
+ * admin, the pool takes none.
  */
-export async function createDeposit(input: CreateDepositInput): Promise<Deposit> {
+export async function createDeposit(input: CreateDepositInput): Promise<Deposit & { newlyCreated: boolean }> {
   return getDb().transaction(async (tx) => {
     const account = await lockAccountForUser(tx, input.userId);
 
@@ -46,11 +46,12 @@ export async function createDeposit(input: CreateDepositInput): Promise<Deposit>
       .from(deposits)
       .where(and(eq(deposits.accountId, account.id), eq(deposits.idempotencyKey, input.idempotencyKey)));
     if (existingDeposit) {
-      return existingDeposit;
+      return { ...existingDeposit, newlyCreated: false };
     }
-    if (depositState(await getPoolSettings(tx), todayIsoDate()) !== "open") {
+    if (!(await getPoolSettings(tx)).depositsOpen) {
       throw new DomainError("DEPOSITS_CLOSED");
     }
+    if (input.promoOfferId) throw new DomainError("PROMO_NOT_BOOKABLE");
 
     const [deposit] = await tx
       .insert(deposits)
@@ -73,12 +74,13 @@ export async function createDeposit(input: CreateDepositInput): Promise<Deposit>
         amountCents: deposit.amountCents,
         method: deposit.method,
         feeCents: deposit.feeCents,
+        promoOfferId: deposit.promoOfferId,
         reference: deposit.reference,
       },
       ipAddress: input.ipAddress,
     });
 
-    return deposit;
+    return { ...deposit, newlyCreated: true };
   });
 }
 
@@ -92,8 +94,8 @@ export async function createDeposit(input: CreateDepositInput): Promise<Deposit>
  * deposit that could earn in it is still pending, so a deposit reconciled afterwards always
  * starts earning after every booked month.
  */
-export async function reconcileDeposit(input: ReconcileDepositInput): Promise<void> {
-  await getDb().transaction(async (tx) => {
+export async function reconcileDeposit(input: ReconcileDepositInput): Promise<number> {
+  return getDb().transaction(async (tx) => {
     const [pendingDeposit] = await tx
       .select({ createdAt: deposits.createdAt, creditedAt: deposits.creditedAt })
       .from(deposits)
@@ -125,7 +127,7 @@ export async function reconcileDeposit(input: ReconcileDepositInput): Promise<vo
         });
       }
     }
-    await recordAudit(tx, {
+    return recordAudit(tx, {
       actorUserId: input.reviewerId,
       action: "deposit.reconciled",
       entityType: "deposit",
@@ -147,8 +149,8 @@ export async function reconcileDeposit(input: ReconcileDepositInput): Promise<vo
  * (deposit minus fee) is reversed in one entry, which fails with INSUFFICIENT_FUNDS if that
  * money has been withdrawn or is reserved for a pending withdrawal.
  */
-export async function rejectDeposit(input: ReviewInput): Promise<void> {
-  await getDb().transaction(async (tx) => {
+export async function rejectDeposit(input: ReviewInput): Promise<number> {
+  return getDb().transaction(async (tx) => {
     const deposit = await finalizePendingDeposit(tx, input, "rejected");
 
     if (deposit.creditedAt !== null) {
@@ -170,7 +172,7 @@ export async function rejectDeposit(input: ReviewInput): Promise<void> {
       });
     }
 
-    await recordAudit(tx, {
+    return recordAudit(tx, {
       actorUserId: input.reviewerId,
       action: "deposit.rejected",
       entityType: "deposit",

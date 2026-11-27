@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { MouseEvent, ReactNode } from "react";
+import { menuToggleStyles } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { cn } from "@/lib/cn";
 
@@ -12,7 +13,7 @@ function isActive(href: string, pathname: string): boolean {
   return href === "/" ? pathname === "/" : pathname.startsWith(href);
 }
 
-/** The website's tabs from `md`; the current one is underlined in plum. */
+/** The website's navigation tabs from `md`. */
 export function PublicNav({ items, label }: { items: PublicNavItem[]; label: string }) {
   const pathname = usePathname();
   return (
@@ -25,10 +26,8 @@ export function PublicNav({ items, label }: { items: PublicNavItem[]; label: str
             href={item.href}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "relative rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-              active
-                ? "text-fg after:absolute after:inset-x-3 after:-bottom-[13px] after:h-0.5 after:rounded-full after:bg-accent-400"
-                : "text-muted hover:text-fg",
+              "rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+              active ? "bg-accent-400 font-semibold text-accent-ink" : "text-muted hover:text-fg",
             )}
           >
             {item.label}
@@ -62,7 +61,7 @@ export function PublicMobileMenu({ items, label, children }: PublicMobileMenuPro
     <details className="group">
       <summary
         aria-label={label}
-        className="grid size-10 cursor-pointer list-none place-items-center rounded-lg text-muted transition-colors hover:bg-raised hover:text-fg [&::-webkit-details-marker]:hidden"
+        className={menuToggleStyles}
       >
         <Icon name="list" className="size-5 group-open:hidden" />
         <Icon name="close" className="hidden size-5 group-open:block" />
@@ -81,7 +80,7 @@ export function PublicMobileMenu({ items, label, children }: PublicMobileMenuPro
                 aria-current={active ? "page" : undefined}
                 className={cn(
                   "rounded-lg px-3 py-3 text-[15px] font-medium",
-                  active ? "bg-raised text-fg" : "text-muted hover:text-fg",
+                  active ? "bg-accent-400 font-semibold text-accent-ink" : "text-muted hover:text-fg",
                 )}
               >
                 {item.label}

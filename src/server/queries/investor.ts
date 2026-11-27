@@ -4,7 +4,7 @@ import { todayIsoDate, type IsoDate } from "@/lib/calendar";
 import { DomainError } from "@/lib/errors";
 import { getDb } from "@/server/db/client";
 import { accounts, deposits, ledgerEntries, withdrawals } from "@/server/db/schema";
-import { loadLockedCapital, loadReservedPayoutCents } from "./accrual";
+import { loadActivePromoStandardReserveCents, loadLockedCapital, loadReservedPayoutCents, loadReservedPromoBookingCents } from "./accrual";
 
 export type AccountOverview = {
   accountId: string;
@@ -17,6 +17,8 @@ export type AccountOverview = {
   totalReturnsCents: number;
   /** Payout plus fee of requests still under review. */
   pendingWithdrawalCents: number;
+  /** Pending promo transfer requests, reserved from the standard pool balance. */
+  pendingPromoCents: number;
   /** The part of that still in the balance: reserved until the admin approves (debits) or rejects (frees) it. */
   reservedCents: number;
   /** Amount after fee of deposits awaiting reconciliation; credited to the balance once reconciled. */
@@ -39,19 +41,19 @@ export async function getAccountOverview(userId: string): Promise<AccountOvervie
     throw new DomainError("ACCOUNT_MISSING");
   }
 
-  const [[ledgerTotals], [pendingTotals], [pendingDeposits], reservedCents, lockedCapital] = await Promise.all([
+  const [[ledgerTotals], [pendingTotals], [pendingDeposits], reservedCents, lockedCapital, pendingPromoCents, promoStandardReserve] = await Promise.all([
     db
       .select({
         depositedCents:
-          sql<number>`coalesce(sum(${ledgerEntries.amountCents}) filter (where ${ledgerEntries.entryType} in ('deposit', 'deposit_fee', 'deposit_reversal')), 0)`.mapWith(
+          sql<number>`coalesce(sum(${ledgerEntries.amountCents}) filter (where ${ledgerEntries.entryType} in ('deposit', 'deposit_fee', 'deposit_reversal', 'promo_principal_return')), 0)`.mapWith(
             Number,
           ),
         withdrawnCents:
-          sql<number>`coalesce(-sum(${ledgerEntries.amountCents}) filter (where ${ledgerEntries.entryType} in ('withdrawal', 'withdrawal_fee', 'withdrawal_reversal')), 0)`.mapWith(
+          sql<number>`coalesce(-sum(${ledgerEntries.amountCents}) filter (where ${ledgerEntries.entryType} in ('withdrawal', 'withdrawal_fee', 'withdrawal_reversal', 'promo_transfer')), 0)`.mapWith(
             Number,
           ),
         returnsCents:
-          sql<number>`coalesce(sum(${ledgerEntries.amountCents}) filter (where ${ledgerEntries.entryType} = 'monthly_return'), 0)`.mapWith(
+          sql<number>`coalesce(sum(${ledgerEntries.amountCents}) filter (where ${ledgerEntries.entryType} in ('monthly_return', 'promo_return')), 0)`.mapWith(
             Number,
           ),
       })
@@ -73,6 +75,8 @@ export async function getAccountOverview(userId: string): Promise<AccountOvervie
       .where(and(eq(deposits.accountId, account.id), eq(deposits.status, "pending"), isNull(deposits.creditedAt))),
     loadReservedPayoutCents(db, account.id),
     loadLockedCapital(db, account.id, todayIsoDate()),
+    loadReservedPromoBookingCents(db, account.id),
+    loadActivePromoStandardReserveCents(db, account.id),
   ]);
 
   return {
@@ -82,11 +86,12 @@ export async function getAccountOverview(userId: string): Promise<AccountOvervie
     totalWithdrawnCents: ledgerTotals.withdrawnCents,
     totalReturnsCents: ledgerTotals.returnsCents,
     pendingWithdrawalCents: pendingTotals.pendingCents,
+    pendingPromoCents,
     reservedCents,
     pendingDepositCents: pendingDeposits.pendingCents,
     lockedCents: lockedCapital.lockedCents,
     nextUnlockOn: lockedCapital.nextUnlockOn,
-    availableCents: Math.max(0, account.balanceCents - lockedCapital.lockedCents - reservedCents),
+    availableCents: Math.max(0, account.balanceCents - lockedCapital.lockedCents - reservedCents - pendingPromoCents - promoStandardReserve),
   };
 }
 
@@ -115,6 +120,9 @@ export async function listRecentDeposits(userId: string, limit = RECENT_REQUESTS
       reference: deposits.reference,
       status: deposits.status,
       receivedOn: deposits.receivedOn,
+      promoOfferId: deposits.promoOfferId,
+      promoOfferName: deposits.promoName,
+      promoTermMonths: deposits.promoTermMonths,
     })
     .from(deposits)
     .innerJoin(accounts, eq(deposits.accountId, accounts.id))

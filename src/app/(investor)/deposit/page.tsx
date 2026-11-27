@@ -5,8 +5,7 @@ import { DepositHistory } from "@/components/transactions/request-history";
 import { Alert } from "@/components/ui/alert";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { getI18n, pageMetadata } from "@/i18n/server";
-import { todayIsoDate } from "@/lib/calendar";
-import { depositLimits, depositState, poolNotice } from "@/lib/pool-settings";
+import { depositLimits, poolNotice } from "@/lib/pool-settings";
 import { requireInvestor } from "@/server/auth/guards";
 import { getAccountOverview, listRecentDeposits } from "@/server/queries/investor";
 import { getPoolSettings } from "@/server/queries/pool-settings";
@@ -15,7 +14,7 @@ export const generateMetadata = pageMetadata((messages) => messages.deposits.tit
 
 export default async function DepositPage() {
   const user = await requireInvestor();
-  const { messages, locale, format } = await getI18n();
+  const { messages, locale } = await getI18n();
   const text = messages.deposits;
   const [overview, recentDeposits, settings] = await Promise.all([
     getAccountOverview(user.id),
@@ -23,10 +22,6 @@ export default async function DepositPage() {
     getPoolSettings(),
   ]);
   const notice = poolNotice(settings, locale);
-  const state = depositState(settings, todayIsoDate());
-  const firstDay = settings.depositsFrom && format.calendarDate(settings.depositsFrom);
-  const lastDay = settings.depositsUntil && format.calendarDate(settings.depositsUntil);
-
   return (
     <div className="flex flex-col gap-4 lg:gap-6">
       <MoveMoneyHeader active="deposit" overview={overview} />
@@ -35,19 +30,15 @@ export default async function DepositPage() {
           <CardHeader title={text.formTitle} description={text.subtitle} icon="arrowDownLeft" />
           <CardContent className="flex flex-col gap-4">
             {notice ? <Alert tone="info">{notice}</Alert> : null}
-            {state === "open" ? (
-              <>
-                {firstDay || lastDay ? <p className="text-sm text-muted">{text.dates(firstDay, lastDay)}</p> : null}
-                {/* A fresh key per render; it changes after each successful booking. */}
+            {settings.depositsOpen ? (
                 <DepositForm
                   idempotencyKey={randomUUID()}
                   balanceCents={overview.balanceCents}
                   limits={depositLimits(settings)}
+                  promos={[]}
                 />
-              </>
             ) : (
               <Alert tone="warning">
-                {state !== "closed" ? `${text.dates(firstDay, lastDay)} ` : null}
                 {text.closed}
               </Alert>
             )}

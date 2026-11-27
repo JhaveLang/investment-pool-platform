@@ -3,7 +3,7 @@ import { and, eq, inArray, min, ne, sql } from "drizzle-orm";
 import type { IsoDate, IsoMonth } from "@/lib/calendar";
 import type { StatementEntry, StatementMovement } from "@/lib/statements";
 import { getDb, type DbExecutor } from "@/server/db/client";
-import { deposits, ledgerEntries, returnPeriods, withdrawals } from "@/server/db/schema";
+import { deposits, ledgerEntries, promoBookings, returnPeriods, withdrawals } from "@/server/db/schema";
 import { berlinDate, depositValueDate } from "./accrual";
 
 export type StatementData = { entries: StatementEntry[]; movements: StatementMovement[] };
@@ -14,6 +14,9 @@ export type StatementData = { entries: StatementEntry[]; movements: StatementMov
  * the following month. Needs the ledger joined with deposits, withdrawals and return periods.
  */
 const entryValueDate = sql<string>`case
+  when ${ledgerEntries.entryType} = 'promo_return' then ${berlinDate(ledgerEntries.createdAt)}
+  when ${ledgerEntries.entryType} = 'promo_principal_return' then ${berlinDate(ledgerEntries.createdAt)}
+  when ${ledgerEntries.entryType} = 'promo_transfer' then ${berlinDate(promoBookings.processedAt)}
   when ${ledgerEntries.returnPeriodId} is not null then (${returnPeriods.periodStart} + interval '1 month')::date
   when ${ledgerEntries.depositId} is not null then ${depositValueDate}
   else ${berlinDate(withdrawals.createdAt)}
@@ -35,13 +38,14 @@ export async function loadStatementData(
       .select({
         accountId: ledgerEntries.accountId,
         valueDate: sql<string>`to_char(${entryValueDate}, 'YYYY-MM-DD')`,
-        returnMonth: sql<string | null>`to_char(${returnPeriods.periodStart}, 'YYYY-MM')`,
+        returnMonth: sql<string | null>`coalesce(to_char(${returnPeriods.periodStart}, 'YYYY-MM'), case when ${ledgerEntries.entryType} = 'promo_return' then to_char(${berlinDate(ledgerEntries.createdAt)}, 'YYYY-MM') end)`,
         amountCents: sql<number>`sum(${ledgerEntries.amountCents})`.mapWith(Number),
       })
       .from(ledgerEntries)
       .leftJoin(deposits, eq(ledgerEntries.depositId, deposits.id))
       .leftJoin(withdrawals, eq(ledgerEntries.withdrawalId, withdrawals.id))
       .leftJoin(returnPeriods, eq(ledgerEntries.returnPeriodId, returnPeriods.id))
+      .leftJoin(promoBookings, eq(ledgerEntries.promoBookingId, promoBookings.id))
       .where(and(inArray(ledgerEntries.accountId, accountIds), sql`${entryValueDate} <= ${upTo}::date`))
       // By position: the value date contains a bound parameter (the time zone), so repeating the expression here
       // wouldn't match the selected one.

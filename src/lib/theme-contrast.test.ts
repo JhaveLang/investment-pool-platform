@@ -31,7 +31,7 @@ const TEXT_SURFACES = ["canvas", "surface", "raised", "well", "overlay"];
 describe("theme", () => {
   it("uses the new palette", () => {
     expect(token("canvas")).toBe("#fff7fb");
-    expect(token("accent-400")).toBe("#4d245b");
+    expect(token("accent-400")).toBe("#563364");
     expect(token("accent-300")).toBe("#350c44");
     expect(token("footer")).toBe("#332f33");
   });
