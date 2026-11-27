@@ -14,11 +14,11 @@ export async function LegalPageContent({ page, title }: { page: LegalPage; title
     <>
       <PublicPageHeader title={title} description={document.intro} />
       <div className={cn(publicContainer, "py-10 sm:py-14")}>
-        <div className="max-w-3xl space-y-8">
+        <div className="space-y-8">
           {LEGAL_TEMPLATES_PENDING ? <Alert tone="warning">{messages.site.templateNotice}</Alert> : null}
           {document.sections.map((section) => (
             <section key={section.heading}>
-              <h2 className="font-display text-lg font-semibold text-accent-400">{section.heading}</h2>
+              <h2 className="font-display text-lg font-semibold text-accent-300">{section.heading}</h2>
               <div className="mt-2 space-y-2 text-[15px] leading-relaxed text-muted">
                 {section.lines ? (
                   <p>
