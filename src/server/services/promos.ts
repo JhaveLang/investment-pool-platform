@@ -7,6 +7,7 @@ import { recordAudit } from "./audit";
 import { generateReference, lockAccountForUser, postLedgerEntries } from "./ledger";
 import { loadLockedCapital, loadReservedPayoutCents, loadReservedPromoBookingCents } from "@/server/queries/accrual";
 import { DomainError } from "@/lib/errors";
+import { isPromoBookable } from "@/lib/promo";
 
 type PromoFields = {
   name: string;
@@ -16,7 +17,6 @@ type PromoFields = {
   termMonths: number;
   totalReturnBps: number;
   details: string;
-  isExample: boolean;
   visible: boolean;
 };
 type Actor = { adminId: string; ipAddress: string | null };
@@ -38,7 +38,7 @@ export async function updatePromoOffer(input: { promoId: string } & Partial<Prom
     const [current] = await tx.select().from(promoOffers).where(eq(promoOffers.id, input.promoId)).for("update").limit(1);
     if (!current) return false;
     const changes: Record<string, { from: unknown; to: unknown }> = {};
-    for (const field of ["name", "bookingUntil", "minDepositCents", "maxDepositCents", "termMonths", "totalReturnBps", "details", "isExample", "visible"] as const) {
+    for (const field of ["name", "bookingUntil", "minDepositCents", "maxDepositCents", "termMonths", "totalReturnBps", "details", "visible"] as const) {
       const value = input[field];
       if (value !== undefined && value !== current[field]) changes[field] = { from: current[field], to: value };
     }
@@ -59,7 +59,7 @@ export async function requestPromoBooking(input: { userId: string; promoId: stri
     const [existing] = await tx.select().from(promoBookings).where(and(eq(promoBookings.accountId, account.id), eq(promoBookings.idempotencyKey, input.idempotencyKey)));
     if (existing) return existing;
     const [offer] = await tx.select().from(promoOffers).where(eq(promoOffers.id, input.promoId)).limit(1);
-    if (!offer || !offer.visible || offer.isExample || offer.bookingUntil < todayIsoDate()) throw new DomainError("PROMO_NOT_BOOKABLE");
+    if (!offer || !isPromoBookable(offer, todayIsoDate())) throw new DomainError("PROMO_NOT_BOOKABLE");
     if (input.amountCents < offer.minDepositCents || input.amountCents > offer.maxDepositCents || input.amountCents % 100 !== 0) throw new DomainError("PROMO_AMOUNT_INVALID");
     const locked = await loadLockedCapital(tx, account.id, todayIsoDate());
     const reservedWithdrawals = await loadReservedPayoutCents(tx, account.id);

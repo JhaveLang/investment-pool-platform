@@ -23,7 +23,6 @@ function readValues(formData: FormData) {
     termMonths: readFormText(formData, "termMonths"),
     totalReturn: readFormText(formData, "totalReturn"),
     details: readFormText(formData, "details"),
-    isExample: formData.get("isExample") === "on" ? "on" : "",
     visible: formData.get("visible") === "on" ? "on" : "",
   };
 }
@@ -31,7 +30,6 @@ function readValues(formData: FormData) {
 function parse(values: ReturnType<typeof readValues>, locale: "de" | "en", messages: Awaited<ReturnType<typeof getI18n>>["messages"]) {
   const parsed = getSchemas(locale).promoOfferSchema.safeParse({
     ...values,
-    isExample: values.isExample === "on",
     visible: values.visible === "on",
   });
   return parsed.success ? parsed : validationErrorState(parsed.error, messages.errors.validation, values);
@@ -50,7 +48,8 @@ export async function createPromoAction(_previousState: ActionState, formData: F
     return failure.status === "error" ? { ...failure, values } : failure;
   }
   revalidatePath("/promos");
-  redirect("/admin/promos?created=1");
+  revalidatePath("/admin/promos");
+  return successState(messages.admin.promos.created);
 }
 
 export async function updatePromoAction(promoId: string, previousState: ActionState, formData: FormData): Promise<ActionState> {

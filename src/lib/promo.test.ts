@@ -1,7 +1,20 @@
 import { describe, expect, it } from "vitest";
-import { availableForFixedIncomesCents, maxPromoBookingCents } from "./promo";
+import { availableForFixedIncomesCents, isPromoBookable, maxPromoBookingCents } from "./promo";
 
 const pool = { balanceCents: 562_756, lockedCents: 0, reservedCents: 0, pendingPromoCents: 0 };
+
+describe("Fixed Incomes offer availability", () => {
+  const offer = { visible: true, bookingUntil: "2026-11-27", details: "Example: €1,000 earns €20." };
+
+  it("allows a visible offer with example text through its booking deadline", () => {
+    expect(isPromoBookable(offer, "2026-11-27")).toBe(true);
+    expect(isPromoBookable(offer, "2026-11-28")).toBe(false);
+  });
+
+  it("excludes hidden offers even before the deadline", () => {
+    expect(isPromoBookable({ ...offer, visible: false }, "2026-11-26")).toBe(false);
+  });
+});
 
 describe("funds available for Fixed Incomes", () => {
   it("keeps one reserve and rounds down to the last whole euro", () => {

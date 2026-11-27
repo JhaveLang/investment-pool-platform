@@ -1,10 +1,8 @@
-import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { buttonStyles } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FlashAlert } from "@/components/ui/flash-alert";
-import { Icon } from "@/components/ui/icon";
 import { PageHeader } from "@/components/ui/page-header";
 import { Table, TableBody, TableCell, TableHeaderCell } from "@/components/ui/table";
 import { getI18n, pageMetadata } from "@/i18n/server";
@@ -12,10 +10,10 @@ import { todayIsoDate } from "@/lib/calendar";
 import { requireAdmin } from "@/server/auth/guards";
 import { listDuePromoMaturities, listPromoBookings, listPromoOffers } from "@/server/queries/promos";
 import { PromoVisibilityButton } from "@/components/admin/promo-visibility-button";
-import { EditPromoButton } from "@/components/admin/promo-form";
+import { PromoFormButton } from "@/components/admin/promo-form";
 import { PromoMaturitySettlement } from "@/components/admin/promo-maturity-settlement";
 import { MarkPromoConfirmationSent, ProcessPromoBookings, SettlePromoBookings } from "@/components/admin/promo-booking-actions";
-import { promoMaturityPayoutCents } from "@/lib/promo";
+import { isPromoBookable, promoMaturityPayoutCents } from "@/lib/promo";
 import { formatIsoDate } from "@/lib/format";
 import { addDays } from "@/lib/calendar";
 import { PROMO_CONFIRMATION_DEADLINE_DAYS } from "@/lib/promo";
@@ -32,7 +30,15 @@ export default async function AdminPromosPage({ searchParams }: PageProps<"/admi
   const today = todayIsoDate();
   return (
     <>
-      <PageHeader title={text.title} description={text.subtitle} actions={<Link href="/admin/promos/new" className={buttonStyles()}><Icon name="plusCircle" className="size-4" />{text.add}</Link>} />
+      <PageHeader title={text.title} description={text.subtitle} actions={
+        <PromoFormButton
+          initiallyOpen={params.new === "1"}
+          initial={{
+            name: "", bookingUntil: today, minDepositCents: 100_000, maxDepositCents: 2_500_000,
+            termMonths: 5, totalReturnBps: 3_100, details: "", visible: true,
+          }}
+        />
+      } />
       {flash ? <FlashAlert param={flash} tone="success" className="mb-4 lg:mb-6">{text[flash]}</FlashAlert> : null}
       <Card className="mb-4 lg:mb-6">
         <CardHeader title={text.pendingBookingsTitle} description={text.processingDelay} icon="clock" />
@@ -89,14 +95,14 @@ export default async function AdminPromosPage({ searchParams }: PageProps<"/admi
             </tr></thead>
             <TableBody>{offers.map((offer) => (
               <tr key={offer.id}>
-                <TableCell className="font-medium text-fg"><span className="inline-flex flex-wrap items-center gap-2">{offer.name}{offer.isExample ? <Badge tone="info">{text.example}</Badge> : null}</span><span className="block text-xs text-subtle">{offer.visible ? text.visibleStatus : text.hiddenStatus}</span></TableCell>
+                <TableCell className="font-medium text-fg">{offer.name}<span className="block text-xs text-subtle">{offer.visible ? text.visibleStatus : text.hiddenStatus}</span></TableCell>
                 <TableCell className="whitespace-nowrap">{format.calendarDate(offer.bookingUntil)}</TableCell>
                 <TableCell className="whitespace-nowrap">{format.currency(offer.minDepositCents)} – {format.currency(offer.maxDepositCents)}</TableCell>
                 <TableCell>{text.months(offer.termMonths)}</TableCell>
                 <TableCell>{format.rate(offer.totalReturnBps * 100)}</TableCell>
-                <TableCell><Badge tone={offer.visible && !offer.isExample && offer.bookingUntil >= today ? "success" : "neutral"}>{offer.bookingUntil < today ? text.closed : offer.isExample ? text.example : offer.visible ? text.bookable : text.hiddenStatus}</Badge></TableCell>
+                <TableCell><Badge tone={isPromoBookable(offer, today) ? "success" : "neutral"}>{offer.bookingUntil < today ? text.closed : offer.visible ? text.bookable : text.hiddenStatus}</Badge></TableCell>
                 <TableCell className="min-w-36"><div className="inline-flex items-start gap-2">
-                  <EditPromoButton offer={offer} />
+                  <PromoFormButton offerId={offer.id} initial={offer} />
                   <PromoVisibilityButton promoId={offer.id} name={offer.name} visible={offer.visible} />
                 </div></TableCell>
               </tr>

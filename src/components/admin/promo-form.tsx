@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useState } from "react";
-import { savePromoEditsAction } from "@/actions/promos";
+import { createPromoAction, savePromoEditsAction } from "@/actions/promos";
 import { ActionStateAlert } from "@/components/ui/alert";
 import { Button, buttonStyles } from "@/components/ui/button";
 import { FormField, TextAreaField } from "@/components/ui/form-field";
@@ -20,7 +20,6 @@ type OfferInitial = {
   termMonths: number;
   totalReturnBps: number;
   details: string;
-  isExample: boolean;
   visible: boolean;
 };
 
@@ -57,10 +56,6 @@ export function PromoForm({ action, initial, submitLabel, onCancel, onSaved }: P
       </div>
       <TextAreaField name="details" label={text.details} rows={7} maxLength={MAX_PROMO_DETAILS_LENGTH} defaultValue={value("details", initial.details)} error={errors.details} />
       <label className="flex items-start gap-3 text-sm text-fg">
-        <input type="checkbox" name="isExample" defaultChecked={failed ? submitted.isExample === "on" : initial.isExample} className="mt-0.5 size-4 shrink-0 accent-accent-400" />
-        <span>{text.exampleOnly}<span className="mt-0.5 block text-[13px] text-subtle">{text.exampleOnlyHint}</span></span>
-      </label>
-      <label className="flex items-start gap-3 text-sm text-fg">
         <input type="checkbox" name="visible" defaultChecked={failed ? submitted.visible === "on" : initial.visible} className="mt-0.5 size-4 shrink-0 accent-accent-400" />
         <span>{text.visible}<span className="mt-0.5 block text-[13px] text-subtle">{text.visibleHint}</span></span>
       </label>
@@ -72,23 +67,36 @@ export function PromoForm({ action, initial, submitLabel, onCancel, onSaved }: P
   );
 }
 
-export function EditPromoButton({ offer }: { offer: OfferInitial & { id: string } }) {
+export function PromoFormButton({ initial, offerId, initiallyOpen = false }: {
+  initial: OfferInitial;
+  offerId?: string;
+  initiallyOpen?: boolean;
+}) {
   const text = useMessages().admin.promos;
   const [savedMessage, setSavedMessage] = useState("");
+  useEffect(() => {
+    if (!initiallyOpen) return;
+    const url = new URL(window.location.href);
+    url.searchParams.delete("new");
+    window.history.replaceState(null, "", url.pathname + url.search + url.hash);
+  }, [initiallyOpen]);
 
   return (
     <div>
       <Popup
-        title={text.editTitle}
-        description={offer.name}
-        trigger={<><Icon name="pencil" className="size-3.5" />{text.edit}</>}
-        triggerClassName={buttonStyles({ variant: "secondary", size: "sm" })}
+        title={offerId ? text.editTitle : text.newTitle}
+        description={offerId ? initial.name : undefined}
+        initiallyOpen={initiallyOpen}
+        trigger={offerId
+          ? <><Icon name="pencil" className="size-3.5" />{text.edit}</>
+          : <><Icon name="plusCircle" className="size-4" />{text.add}</>}
+        triggerClassName={offerId ? buttonStyles({ variant: "secondary", size: "sm" }) : buttonStyles()}
       >
         {(close) => (
           <PromoForm
-            action={savePromoEditsAction.bind(null, offer.id)}
-            initial={offer}
-            submitLabel={text.save}
+            action={offerId ? savePromoEditsAction.bind(null, offerId) : createPromoAction}
+            initial={initial}
+            submitLabel={offerId ? text.save : text.create}
             onCancel={close}
             onSaved={(message) => {
               setSavedMessage(message);

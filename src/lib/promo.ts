@@ -10,8 +10,8 @@ type StandardPoolFunds = {
   pendingPromoCents: number;
 };
 
-export function isPromoBookable(offer: { visible: boolean; isExample: boolean; bookingUntil: string }, today: string) {
-  return offer.visible && !offer.isExample && offer.bookingUntil >= today;
+export function isPromoBookable(offer: { visible: boolean; bookingUntil: string }, today: string) {
+  return offer.visible && offer.bookingUntil >= today;
 }
 
 export function availableForFixedIncomesCents(pool: StandardPoolFunds, limitCents = Infinity): number {

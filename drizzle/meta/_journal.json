@@ -127,6 +127,13 @@
       "when": 1795772980094,
       "tag": "0017_promo_constraint_names",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1795773963649,
+      "tag": "0018_remove_offer_example_mode",
+      "breakpoints": true
     }
   ]
 }

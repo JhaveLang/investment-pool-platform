@@ -1,0 +1,1 @@
+ALTER TABLE "promo_offers" DROP COLUMN "is_example";

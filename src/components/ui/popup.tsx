@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { useMessages } from "@/i18n/client";
 import { cn } from "@/lib/cn";
 import { buttonStyles } from "./button";
@@ -32,6 +32,7 @@ type PopupProps = {
   triggerLabel?: string;
   /** Tooltip of the button. */
   triggerTitle?: string;
+  initiallyOpen?: boolean;
   /** Close once a form inside is submitted, e.g. a download that keeps the page open. */
   closeOnSubmit?: boolean;
   size?: keyof typeof sizeStyles;
@@ -51,6 +52,7 @@ export function Popup({
   triggerClassName,
   triggerLabel,
   triggerTitle,
+  initiallyOpen = false,
   closeOnSubmit = false,
   size = "md",
   children,
@@ -61,6 +63,15 @@ export function Popup({
   const lazy = typeof children === "function";
   const titleId = useId();
   const close = () => dialogRef.current?.close();
+  const open = useCallback(() => {
+    const dialog = dialogRef.current;
+    if (!dialog || dialog.open) return;
+    dialog.showModal();
+    if (lazy) setOpenDialog(dialog);
+  }, [lazy]);
+  useEffect(() => {
+    if (initiallyOpen) open();
+  }, [initiallyOpen, open]);
 
   return (
     <>
@@ -69,12 +80,7 @@ export function Popup({
         aria-haspopup="dialog"
         aria-label={triggerLabel}
         title={triggerTitle}
-        onClick={() => {
-          const dialog = dialogRef.current;
-          if (!dialog) return;
-          dialog.showModal();
-          if (lazy) setOpenDialog(dialog);
-        }}
+        onClick={open}
         className={triggerClassName ?? buttonStyles({ variant: "secondary" })}
       >
         {trigger}

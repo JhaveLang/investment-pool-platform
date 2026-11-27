@@ -163,8 +163,6 @@ export const promoOffers = pgTable(
     termMonths: integer("term_months").notNull(),
     totalReturnBps: integer("total_return_bps").notNull(),
     details: text("details").notNull().default(""),
-    /** Demo/example offers are visible to investors but can never be selected for a deposit. */
-    isExample: boolean("is_example").notNull().default(false),
     visible: boolean("visible").notNull().default(true),
     createdAt: createdAt(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),

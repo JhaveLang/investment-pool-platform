@@ -29,7 +29,9 @@ export default async function InvestorPromosPage({ searchParams }: PageProps<"/p
         {visibleOffers.map((offer) => {
           const bookable = isPromoBookable(offer, today);
           return <Card key={offer.id} className="overflow-hidden">
-            <CardHeader title={offer.name} description={text.displayOnlyNote} icon="percent" action={<div className="flex flex-wrap gap-1.5">{offer.isExample ? <Badge tone="info">{text.example}</Badge> : null}{offer.bookingUntil < today ? <Badge tone="neutral">{text.closed}</Badge> : bookable ? <Badge tone="success">{text.bookable}</Badge> : null}</div>} />
+            <CardHeader title={offer.name} description={text.displayOnlyNote} icon="percent" action={
+              <Badge tone={bookable ? "success" : "neutral"}>{bookable ? text.bookable : text.closed}</Badge>
+            } />
             <CardContent>
               {offer.details ? <p className="mb-5 whitespace-pre-line text-sm leading-relaxed text-muted">{offer.details}</p> : null}
               <dl className="grid grid-cols-2 gap-x-5 gap-y-4">
@@ -39,7 +41,7 @@ export default async function InvestorPromosPage({ searchParams }: PageProps<"/p
                 <div><dt className="label-caps text-subtle">{text.maximum}</dt><dd className="mt-1 font-medium text-fg">{format.currency(offer.maxDepositCents)}</dd></div>
                 <div className="col-span-2 border-t border-line pt-4"><dt className="label-caps text-subtle">{text.totalReturnLabel}</dt><dd className="mt-1 font-display text-2xl font-semibold text-fg">{format.rate(offer.totalReturnBps * 100)}</dd></div>
               </dl>
-              {offer.isExample ? <p className="mt-4 rounded-lg border border-line bg-well px-3.5 py-2.5 text-sm font-medium text-muted">{text.exampleLabel}</p> : bookable ? <PromoBookingLink promoId={offer.id} /> : null}
+              {bookable && <PromoBookingLink promoId={offer.id} />}
             </CardContent>
           </Card>;
         })}

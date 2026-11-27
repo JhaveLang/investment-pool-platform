@@ -243,7 +243,6 @@ function createSchemas(locale: Locale) {
         termMonths: z.string().regex(/^\d+$/, { error: text.invalidRequest }).transform(Number).pipe(z.number().int().min(1, { error: text.invalidRequest }).max(120, { error: text.invalidRequest })),
         totalReturn: promoReturnSchema,
         details: z.string().trim().max(MAX_PROMO_DETAILS_LENGTH, { error: text.promoDetailsTooLong(MAX_PROMO_DETAILS_LENGTH) }),
-        isExample: z.boolean(),
         visible: z.boolean(),
       })
       .refine((values) => values.minDeposit <= values.maxDeposit, {
