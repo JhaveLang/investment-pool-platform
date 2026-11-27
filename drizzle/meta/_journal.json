@@ -120,6 +120,13 @@
       "when": 1795700004000,
       "tag": "0016_promo_bookings",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1795772980094,
+      "tag": "0017_promo_constraint_names",
+      "breakpoints": true
     }
   ]
 }

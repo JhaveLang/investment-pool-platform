@@ -28,7 +28,7 @@ export async function OpenRequests({ deposits, withdrawals }: OpenRequestsProps)
   ].sort((left, right) => right.row.createdAt.getTime() - left.row.createdAt.getTime());
 
   return (
-    <Card>
+    <Card className="min-w-0">
       <CardHeader
         title={text.openRequestsTitle}
         icon="clock"
@@ -94,24 +94,27 @@ async function PendingWithdrawal({ withdrawal }: { withdrawal: RecentWithdrawal 
 async function PendingDeposit({ deposit }: { deposit: RecentDeposit }) {
   const { messages, format } = await getI18n();
   return (
-    <li className="flex items-start justify-between gap-3 rounded-lg bg-raised p-3">
-      <div className="flex min-w-0 items-start gap-2.5">
-        <span className="grid size-9 shrink-0 place-items-center rounded-full bg-gain/10 text-gain">
-          <Icon name="arrowDownLeft" className="size-4" />
-        </span>
-        <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-fg">{messages.entryTypes.deposit}</p>
-          <p className="text-xs text-muted">
-            {messages.paymentMethods[deposit.method]}, {format.dateTime(deposit.createdAt)}
-          </p>
-          <div className="mt-1.5">
-            <Badge tone="warning">{messages.depositStatus.pending}</Badge>
+    <li className="rounded-lg bg-raised p-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-start gap-2.5">
+          <span className="grid size-9 shrink-0 place-items-center rounded-full bg-gain/10 text-gain">
+            <Icon name="arrowDownLeft" className="size-4" />
+          </span>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold text-fg">{messages.entryTypes.deposit}</p>
+            <p className="text-xs break-words hyphens-auto text-muted">
+              {messages.paymentMethods[deposit.method]}, {format.dateTime(deposit.createdAt)}
+            </p>
           </div>
         </div>
+        <span className="amount shrink-0 text-sm font-bold text-gain">
+          {format.signedCurrency(deposit.amountCents - deposit.feeCents)}
+        </span>
       </div>
-      <span className="amount shrink-0 text-sm font-bold text-gain">
-        {format.signedCurrency(deposit.amountCents - deposit.feeCents)}
-      </span>
+      {/* Below the amount's row, indented past the icon: next to the amount, the badge overflowed narrow phones. */}
+      <div className="mt-1.5 pl-11.5">
+        <Badge tone="warning">{messages.depositStatus.pending}</Badge>
+      </div>
     </li>
   );
 }

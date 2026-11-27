@@ -27,6 +27,12 @@ const MIN_PASSWORD_LENGTH = 10;
 const DEMO_IBAN = "DE89370400440532013000";
 const DEMO_WALLET = "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh";
 
+// Load .env before getDb() reads DATABASE_URL.
+try {
+  process.loadEnvFile();
+} catch {
+  // No .env file: rely on the process environment (e.g. inside Docker).
+}
 const db = getDb();
 let adminId = "";
 
@@ -114,11 +120,6 @@ async function bookMonth(month: IsoMonth, ratePercent: number) {
 }
 
 async function seedDemo(): Promise<void> {
-  try {
-    process.loadEnvFile();
-  } catch {
-    // No .env file: rely on the process environment (e.g. inside Docker).
-  }
   const password = process.env.DEMO_PASSWORD || DEFAULT_DEMO_PASSWORD;
   if (password.length < MIN_PASSWORD_LENGTH) {
     throw new Error(`DEMO_PASSWORD must be at least ${MIN_PASSWORD_LENGTH} characters long.`);

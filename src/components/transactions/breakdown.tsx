@@ -20,13 +20,13 @@ export function Breakdown({ rows }: { rows: Array<{ label: string; value: ReactN
 export function ProjectedBalance({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between gap-3 rounded-xl bg-well px-4 py-3.5">
-      <span className="flex items-center gap-2.5 text-[13px] whitespace-nowrap text-muted">
-        <span className="grid size-8 place-items-center rounded-full bg-accent-400/10 text-accent-400">
+      <span className="flex min-w-0 items-center gap-2.5 text-[13px] text-muted">
+        <span className="grid size-8 shrink-0 place-items-center rounded-full bg-accent-400/10 text-accent-400">
           <Icon name="trendingUp" className="size-4" />
         </span>
         {label}
       </span>
-      <span className="amount font-display text-lg font-bold text-accent-400 sm:text-xl">{value}</span>
+      <span className="amount shrink-0 font-display text-lg font-bold whitespace-nowrap text-accent-400 sm:text-xl">{value}</span>
     </div>
   );
 }
