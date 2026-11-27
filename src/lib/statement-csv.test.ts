@@ -18,6 +18,7 @@ const lines = (csv: string) => csv.replace(/^﻿/, "").trimEnd().split("\r\n");
 const october: MonthStatement = {
   month: "2026-10",
   openingCents: 1_000_000,
+  closingCents: 525_000,
   returnCents: 25_000,
   movements: [
     {
@@ -34,6 +35,7 @@ const october: MonthStatement = {
 const november: MonthStatement = {
   month: "2026-11",
   openingCents: 525_000,
+  closingCents: 632_400,
   returnCents: null,
   movements: [
     {
@@ -56,7 +58,7 @@ const november: MonthStatement = {
     },
   ],
 };
-const empty: MonthStatement = { month: "2026-09", openingCents: null, returnCents: null, movements: [] };
+const empty: MonthStatement = { month: "2026-09", openingCents: null, closingCents: null, returnCents: null, movements: [] };
 
 describe("buildInvestorsStatementCsv", () => {
   it("puts three columns per month side by side, oldest month first", () => {
@@ -70,8 +72,8 @@ describe("buildInvestorsStatementCsv", () => {
     expect(lines(csv)).toEqual([
       "Anleger-ID;Anleger;Status;Anlage am 1. Sept. 2026 (EUR);Rendite Sept. 2026 (EUR);Sonstiges Sept. 2026;" +
         "Anlage am 1. Okt. 2026 (EUR);Rendite Okt. 2026 (EUR);Sonstiges Okt. 2026;" +
-        "Anlage am 1. Nov. 2026 (EUR);Rendite Nov. 2026 (EUR);Sonstiges Nov. 2026",
-      "42TN03;Ben;Aktiv;;;;10000,00;250,00;20.10.2026: -5000,00;5250,00;;02.11.2026: +1074,00 · 23.11.2026: +980,00 (offen)",
+        "Anlage am 1. Nov. 2026 (EUR);Rendite Nov. 2026 (EUR);Sonstiges Nov. 2026;Gebuchter Endsaldo (EUR)",
+      "42TN03;Ben;Aktiv;;;;10000,00;250,00;20.10.2026: -5000,00;5250,00;;02.11.2026: +1074,00 · 23.11.2026: +980,00 (offen);6324,00",
     ]);
   });
 
@@ -84,13 +86,22 @@ describe("buildInvestorsStatementCsv", () => {
       ",",
     );
     expect(lines(csv)).toEqual([
-      "Investor ID,Investor,Status,Investment on 1 Oct 2026 (EUR),Return Oct 2026 (EUR),Miscellaneous Oct 2026",
-      '42TN03,"Berger, Ben",Active,10000.00,250.00,20 Oct 2026: -5000.00',
+      "Investor ID,Investor,Status,Investment on 1 Oct 2026 (EUR),Return Oct 2026 (EUR),Miscellaneous Oct 2026,Booked closing balance (EUR)",
+      '42TN03,"Berger, Ben",Active,10000.00,250.00,20 Oct 2026: -5000.00,5250.00',
     ]);
   });
 });
 
 describe("buildInvestorStatementCsv", () => {
+  it("identifies the month with a difference in both exports even without itemized movements", () => {
+    const statement = { ...empty, closingCents: 500 };
+    const investor = { investorCode: "42TN03", fullName: "Ben", statusLabel: "Active", statements: [statement] };
+    const format = getFormatter("en");
+    const warning = en.csv.reviewDifference(format.signedCurrency(500));
+    expect(buildInvestorStatementCsv(investor, [statement], en.csv, format, ",")).toContain(warning);
+    expect(buildInvestorsStatementCsv([investor], [statement.month], en.csv, format, ",")).toContain(warning);
+  });
+
   it("writes one row per month and sums only booked deposits and withdrawals", () => {
     const csv = buildInvestorStatementCsv(
       { investorCode: "42TN03", fullName: "Ben" },
@@ -100,9 +111,9 @@ describe("buildInvestorStatementCsv", () => {
       ";",
     );
     expect(lines(csv)).toEqual([
-      "Anleger-ID;Anleger;Monat;Anlage am 1. (EUR);Rendite (EUR);Einzahlungen (EUR);Auszahlungen (EUR);Sonstiges",
-      "42TN03;Ben;Oktober 2026;10000,00;250,00;;-5000,00;20.10.2026: -5000,00",
-      "42TN03;Ben;November 2026;5250,00;;1074,00;;02.11.2026: +1074,00 · 23.11.2026: +980,00 (offen)",
+      "Anleger-ID;Anleger;Monat;Anlage am 1. (EUR);Rendite (EUR);Einzahlungen (EUR);Auszahlungen (EUR);Sonstiges;Gebuchter Endsaldo (EUR)",
+      "42TN03;Ben;Oktober 2026;10000,00;250,00;;-5000,00;20.10.2026: -5000,00;5250,00",
+      "42TN03;Ben;November 2026;5250,00;;1074,00;;02.11.2026: +1074,00 · 23.11.2026: +980,00 (offen);6324,00",
     ]);
   });
 });

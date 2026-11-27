@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, type ReactNode } from "react";
+import { menuToggleStyles } from "@/components/ui/button";
 import { useMessages } from "@/i18n/client";
 
 /**
@@ -21,7 +22,7 @@ export function AccountMenu({ avatar, children }: { avatar: ReactNode; children:
     <details ref={detailsRef} className="group relative">
       <summary
         aria-label={messages.nav.accountMenu}
-        className="cursor-pointer list-none rounded-full [&::-webkit-details-marker]:hidden"
+        className={menuToggleStyles}
       >
         {avatar}
       </summary>

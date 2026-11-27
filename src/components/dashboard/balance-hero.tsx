@@ -80,23 +80,22 @@ export async function BalanceHero({ overview, trend, latestRate }: BalanceHeroPr
         <div className="rounded-lg bg-overlay/60 p-2.5">
           <p className="label-caps flex items-center gap-1 text-muted">
             <Icon name="wallet" className="size-[15px] text-accent-400" />
-            {text.availableShort}
+            {text.available}
           </p>
           <p className="amount mt-1 font-display text-lg font-semibold text-fg">
             {format.currency(overview.availableCents)}
           </p>
-          <p className="text-xs text-muted">{text.availableNow}</p>
         </div>
         <div className="rounded-lg bg-overlay/60 p-2.5">
           <p className="label-caps flex items-center gap-1 text-muted">
             <Icon name="lock" className="size-[15px] text-warn" />
-            {text.lockedShort}
+            {text.locked}
           </p>
           <p className="amount mt-1 font-display text-lg font-semibold text-fg">
             {format.currency(overview.lockedCents)}
           </p>
           <p className="text-xs text-muted">
-            {overview.nextUnlockOn ? text.freeFrom(format.calendarDate(overview.nextUnlockOn)) : text.nothingLocked}
+            {overview.nextUnlockOn ? text.nextDepositUnlock(format.calendarDate(overview.nextUnlockOn)) : text.nothingLocked}
           </p>
         </div>
       </div>

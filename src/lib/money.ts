@@ -1,8 +1,8 @@
 import type { Locale } from "@/i18n/config";
 
-// Limits of one deposit or withdrawal request, for the amount the investor enters (the payout fee comes on top).
+// Outer bounds of every amount; the limits in force within them are set by the admin (`src/lib/pool-settings.ts`).
 export const MIN_TRANSACTION_CENTS = 100; // 1,00 €
-export const MAX_TRANSACTION_CENTS = 1_000_000; // 10.000,00 €
+export const MAX_TRANSACTION_CENTS = 100_000_000; // 1.000.000,00 €
 
 type AmountNotation = {
   /** With thousands separators: "1.234,56" (de) / "1,234.56" (en) */

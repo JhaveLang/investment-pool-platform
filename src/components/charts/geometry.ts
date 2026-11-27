@@ -2,7 +2,7 @@ import { daysBetween, type IsoDate } from "@/lib/calendar";
 
 export type DatedValue = { day: IsoDate; cents: number };
 
-/** Plot coordinates in a 0–100 box: x left to right, y top to bottom. */
+/** SVG plot coordinates, with x increasing from left to right. */
 export type PlotPoint = { x: number; y: number };
 
 /** A rounded axis maximum and its tick values, e.g. 18 585 € → 0, 5 000, 10 000, 15 000, 20 000 €. */
@@ -32,14 +32,29 @@ export function plotDatedValues(values: readonly DatedValue[], maxCents: number)
   }));
 }
 
-/**
- * A balance holds until the next movement, so the line steps: flat to the next day with
- * a movement, then straight up or down to the new value.
- */
-export function stepLinePath(points: readonly PlotPoint[]): string {
-  return points.map((point, index) => (index === 0 ? `M${point.x} ${point.y}` : `H${point.x}V${point.y}`)).join("");
-}
+/** Smoothly connect time-ordered samples, staying within each interval's observed range. */
+export function smoothLinePath(points: readonly PlotPoint[]): string {
+  // Today's balance can repeat the last ledger date. Use the closing value for that date.
+  const samples = points.filter((point, index) => point.x !== points[index + 1]?.x);
+  if (samples.length === 0) return "";
 
-export function stepAreaPath(points: readonly PlotPoint[]): string {
-  return `${stepLinePath(points)}V100H${points[0].x}Z`;
+  const slopes = samples.slice(1).map((point, index) => (point.y - samples[index].y) / (point.x - samples[index].x));
+  const tangents = samples.map((_point, index) => {
+    const before = slopes[index - 1] ?? 0;
+    const after = slopes[index] ?? 0;
+    // Horizontal at endpoints and turning points. Elsewhere, use the gentler slope on either side.
+    return before * after > 0 ? Math.sign(before) * Math.min(Math.abs(before), Math.abs(after)) : 0;
+  });
+
+  const xy = (horizontal: number, vertical: number) => `${Number(horizontal.toFixed(3))} ${Number(vertical.toFixed(3))}`;
+  const path = [`M${xy(samples[0].x, samples[0].y)}`];
+  for (let index = 1; index < samples.length; index++) {
+    const start = samples[index - 1];
+    const end = samples[index];
+    const dx = (end.x - start.x) / 3;
+    const control1 = xy(start.x + dx, start.y + dx * tangents[index - 1]);
+    const control2 = xy(end.x - dx, end.y - dx * tangents[index]);
+    path.push(`C${control1} ${control2} ${xy(end.x, end.y)}`);
+  }
+  return path.join(" ");
 }

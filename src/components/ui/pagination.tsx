@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getI18n } from "@/i18n/server";
 import { cn } from "@/lib/cn";
 import type { PaginatedResult } from "@/lib/pagination";
+import { buttonStyles } from "./button";
 import { Icon } from "./icon";
 
 type PaginationProps = {
@@ -47,15 +48,14 @@ function visiblePages(page: number, totalPages: number): Array<number | null> {
   return withGaps;
 }
 
-const cellStyles = "grid h-8 min-w-8 place-items-center rounded-lg px-2 text-[13px] font-semibold transition-colors";
+const stepStyles = buttonStyles({ variant: "secondary", size: "iconSm" });
+const disabledStepStyles = cn(stepStyles, "pointer-events-none opacity-50");
 
 export async function Pagination({ result, ...hrefOptions }: PaginationProps) {
   const { messages } = await getI18n();
   const { page, pageSize, totalPages, totalCount } = result;
   const firstShown = (page - 1) * pageSize + 1;
   const lastShown = Math.min(totalCount, page * pageSize);
-  const stepStyles = cn(cellStyles, "bg-raised text-muted hover:bg-overlay hover:text-fg");
-  const disabledStepStyles = cn(cellStyles, "pointer-events-none bg-raised text-subtle opacity-40");
 
   return (
     <nav
@@ -63,7 +63,7 @@ export async function Pagination({ result, ...hrefOptions }: PaginationProps) {
       className="flex flex-wrap items-center justify-between gap-3 border-t border-line px-5 py-3.5 text-[13px] text-muted"
     >
       <p>{messages.common.showingRange(firstShown, lastShown, totalCount)}</p>
-      <div className="flex items-center gap-1.5">
+      <div className="flex flex-wrap items-center gap-1.5">
         {page > 1 ? (
           <Link
             href={buildPageHref(hrefOptions, page - 1)}
@@ -87,10 +87,7 @@ export async function Pagination({ result, ...hrefOptions }: PaginationProps) {
               key={candidate}
               href={buildPageHref(hrefOptions, candidate)}
               aria-current={candidate === page ? "page" : undefined}
-              className={cn(
-                cellStyles,
-                candidate === page ? "bg-accent-400 text-accent-ink" : "text-muted hover:bg-raised hover:text-fg",
-              )}
+              className={buttonStyles({ size: "sm", variant: candidate === page ? "selected" : "ghost", className: "min-w-8 px-2" })}
             >
               {candidate}
             </Link>

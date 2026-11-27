@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import type { z } from "zod";
 import { getI18n } from "@/i18n/server";
 import { readFormText, successState, validationErrorState, type ActionState } from "@/lib/action-state";
@@ -9,6 +10,7 @@ import { getSchemas, type ValidationSchemas } from "@/lib/validation";
 import { toErrorState } from "@/server/action-errors";
 import { requireAdmin } from "@/server/auth/guards";
 import { getClientIp } from "@/server/request";
+import { sendInvestorUpdateMail } from "@/server/request-mail";
 import { reconcileDeposit, rejectDeposit } from "@/server/services/deposits";
 import { bookMonthlyReturn } from "@/server/services/returns";
 import type { ReviewInput } from "@/server/services/types";
@@ -23,7 +25,7 @@ async function runReview<Fields extends ReviewFields>(
   recordId: string,
   formData: FormData,
   selectSchema: (schemas: ValidationSchemas) => { safeParse: (value: unknown) => z.ZodSafeParseResult<Fields> },
-  perform: (input: ReviewInput, fields: Fields) => Promise<void>,
+  perform: (input: ReviewInput, fields: Fields) => Promise<number>,
   successMessageKey: ReviewSuccessMessageKey,
 ): Promise<ActionState> {
   const admin = await requireAdmin();
@@ -44,7 +46,8 @@ async function runReview<Fields extends ReviewFields>(
       note: parsed.data.note,
       ipAddress: await getClientIp(),
     };
-    await perform(input, parsed.data);
+    const auditLogId = await perform(input, parsed.data);
+    after(() => sendInvestorUpdateMail(auditLogId));
     revalidatePath("/", "layout");
     return successState(messages.admin.review[successMessageKey]);
   } catch (error) {
@@ -92,13 +95,14 @@ export async function bookMonthlyReturnAction(_previousState: ActionState, formD
   }
 
   try {
-    await bookMonthlyReturn({
+    const period = await bookMonthlyReturn({
       month: parsed.data.month,
       ratePpm: parsed.data.rate,
       expectedTotalCents: parsed.data.expectedTotalCents,
       adminUserId: admin.id,
       ipAddress: await getClientIp(),
     });
+    after(() => sendInvestorUpdateMail(period.auditLogId));
   } catch (error) {
     return toErrorState(error, messages);
   }

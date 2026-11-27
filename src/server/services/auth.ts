@@ -59,7 +59,7 @@ export async function createInvestor(
           ipAddress: input.ipAddress,
         });
 
-        return user;
+        return { ...user, investorCode };
       });
     } catch (error) {
       if (isUniqueViolation(error, INVESTOR_CODE_CONSTRAINT)) {
@@ -124,5 +124,5 @@ export async function authenticate(input: AuthenticateInput): Promise<SessionUse
     ipAddress: input.ipAddress,
   });
 
-  return { id: user.id, email: user.email, fullName: user.fullName, role: user.role };
+  return { id: user.id, email: user.email, fullName: user.fullName, investorCode: user.investorCode, role: user.role };
 }

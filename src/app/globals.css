@@ -1,41 +1,45 @@
-@import "tailwindcss";
+@import "tailwindcss" source("..");
 
 /*
- * Bitcoin Magazin Pool design, after the pool's Webador site (bitcoin-magazin-pool.com): white pages, black text,
- * plum (#563364) for the brand, headings, the active item and the primary action, light lilac (#ddcbe4) for lines.
- * - Surfaces step up with elevation: canvas (faint lilac grey) → surface (white cards, sidebar) → raised (rows,
- *   inner panels) → overlay (hover, active) → highest; `well` is the recessed input/stat ground.
+ * Bitcoin Magazin Pool design, after the "enhanced landing" design file: a soft pink canvas, white cards, near-black
+ * text, plum (#563364) for the brand, the active item and the primary action, deep plum (#350c44) for its hover and
+ * the website's headings, greyed lilac (#cfc3ce) for lines.
+ * - Surfaces step up with elevation: canvas (soft pink) → surface (white cards, sidebar) → raised (rows, inner
+ *   panels) → overlay (hover, active, secondary buttons) → highest; `well` is the recessed input/stat ground.
  * - Plum (`accent-*`) is the brand and primary action; `accent-300` is its hover step, `accent-ink` / `accent-deep`
  *   the text on plum. Money keeps its own colors: green (`gain`) for credits and returns, red (`loss`) for debits,
- *   amber (`warn`) for money under review; indigo marks structural tags. Every text color meets 4.5:1 on all surfaces.
- * - Display type is Plus Jakarta Sans, data and body Inter with tabular figures.
+ *   amber (`warn`) for money under review; indigo marks structural tags. Every text color meets 4.5:1 on all surfaces
+ *   (checked by src/lib/theme-contrast.test.ts).
+ * - Display type is Afacad Flux, data and body Instrument Sans with tabular figures, and Source Code Pro for dates in
+ *   notice lists and for references, whose zero it keeps apart from the letter O.
  */
 @theme {
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
-  --font-display: var(--font-jakarta), var(--font-inter), ui-sans-serif, sans-serif;
+  --font-sans: var(--font-instrument), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-afacad), var(--font-instrument), ui-sans-serif, sans-serif;
+  --font-mono: var(--font-source-code), ui-monospace, monospace;
 
   /* Wide desktop: where the dashboards split into ledger and side column. A theme breakpoint
      (unlike an arbitrary min-[…] variant) is ordered after lg/xl, so it reliably overrides them. */
   --breakpoint-wide: 87.5rem;
 
-  --color-canvas: #f6f4f8;
-  --color-well: #f4f0f7;
+  --color-canvas: #fff7fb;
+  --color-well: #f4ebf1;
   --color-sidebar: #ffffff;
   --color-surface: #ffffff;
-  --color-raised: #f9f7fb;
-  --color-overlay: #f1ebf4;
-  --color-highest: #e6dbeb;
-  --color-line: #ece5f0;
-  --color-line-strong: #ddcbe4;
+  --color-raised: #faf1f7;
+  --color-overlay: #efe6eb;
+  --color-highest: #e9e0e6;
+  --color-line: #e4dce3;
+  --color-line-strong: #cfc3ce;
 
-  --color-fg: #1d1621;
-  --color-muted: #4e4555;
-  --color-subtle: #6b6272;
+  --color-fg: #1e1a1e;
+  --color-muted: #4d444d;
+  --color-subtle: #6b616b;
 
-  --color-accent-300: #432650;
+  --color-accent-300: #350c44;
   --color-accent-400: #563364;
-  --color-accent-500: #563364;
-  --color-accent-600: #3d2348;
+  --color-accent-500: #4d245b;
+  --color-accent-600: #350c44;
   --color-accent-ink: #ffffff;
   --color-accent-deep: #ffffff;
 
@@ -46,8 +50,8 @@
   --color-loss: #b42318;
   --color-warn: #a14a06;
 
-  /* The website's dark grey bottom bar, as on the Webador site (white text on it: 12.6:1). */
-  --color-footer: #333333;
+  /* The website's dark bottom bar (white text on it: 13.2:1). */
+  --color-footer: #332f33;
 
   /* Donut slices; validated as a pair on white (the lighter slice is always named in the legend). */
   --color-chart-free: #74399a;
@@ -97,16 +101,24 @@
 /* Amounts line up vertically in tables and lists. */
 .amount {
   font-variant-numeric: tabular-nums;
-  font-feature-settings:
-    "tnum" 1,
-    "cv05" 1;
+  font-feature-settings: "tnum" 1;
   white-space: nowrap;
 }
 
-/* Booking references, IBANs and wallet addresses: fixed-width figures and a slashed zero keep characters apart. */
+/* Booking references, IBANs and wallet addresses: the code font's fixed widths and dotted zero keep characters apart
+   (the body font draws 0 and O alike). */
 .reference {
+  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums slashed-zero;
   letter-spacing: 0.02em;
+}
+
+/* The start page hero's faint 40 px plum grid. */
+@utility grid-backdrop {
+  background-image:
+    linear-gradient(to right, color-mix(in srgb, var(--color-accent-400) 4.5%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, var(--color-accent-400) 4.5%, transparent) 1px, transparent 1px);
+  background-size: 40px 40px;
 }
 
 /* Soft plum and lilac light behind hero cards. */

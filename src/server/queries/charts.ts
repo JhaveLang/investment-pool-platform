@@ -32,9 +32,9 @@ export async function loadBalanceHistory(accountId?: string): Promise<BalancePoi
   const rows = await getDb()
     .select({
       day: sql<string>`to_char(${day}, 'YYYY-MM-DD')`,
-      depositedCents: sumOf("'deposit', 'deposit_fee', 'deposit_reversal'"),
-      withdrawnCents: sumOf("'withdrawal', 'withdrawal_fee', 'withdrawal_reversal'"),
-      returnsCents: sumOf("'monthly_return'"),
+      depositedCents: sumOf("'deposit', 'deposit_fee', 'deposit_reversal', 'promo_principal_return'"),
+      withdrawnCents: sumOf("'withdrawal', 'withdrawal_fee', 'withdrawal_reversal', 'promo_transfer'"),
+      returnsCents: sumOf("'monthly_return', 'promo_return'"),
     })
     .from(ledgerEntries)
     .where(accountId ? eq(ledgerEntries.accountId, accountId) : undefined)

@@ -15,6 +15,8 @@ export async function SiteFooter() {
   const columns = [
     [
       { href: "/", label: text.home },
+      { href: "/services", label: text.services },
+      { href: "/faq", label: text.faq },
       { href: "/news", label: text.news },
       { href: "/contact", label: text.contact },
       account,
@@ -22,11 +24,12 @@ export async function SiteFooter() {
     [
       { href: "/imprint", label: text.imprint },
       { href: "/privacy", label: text.privacy },
+      { href: SITE.trustpilotUrl, label: text.trustpilot },
     ],
   ];
 
   return (
-    <footer className="mt-16 border-t border-line bg-sidebar/50">
+    <footer className="mt-16 border-t border-line bg-surface">
       <div className={cn(publicContainer, "grid gap-10 py-12 md:grid-cols-[minmax(0,1fr)_auto]")}>
         <div>
           <Brand />

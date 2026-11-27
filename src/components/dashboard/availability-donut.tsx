@@ -1,5 +1,6 @@
 import { Card, CardHeader } from "@/components/ui/card";
 import { getI18n } from "@/i18n/server";
+import { availableForFixedIncomesCents, MIN_STANDARD_POOL_BALANCE_CENTS } from "@/lib/promo";
 import type { AccountOverview } from "@/server/queries/investor";
 
 const RADIUS = 42;
@@ -90,6 +91,13 @@ export async function AvailabilityDonut({ overview }: { overview: AccountOvervie
             </li>
           ))}
         </ul>
+      </div>
+      <div className="border-t border-line px-5 py-3">
+        <dl className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+          <dt className="text-sm font-medium text-fg">{text.availableForFixedIncomes}</dt>
+          <dd className="amount font-semibold text-fg">{format.currency(availableForFixedIncomesCents(overview))}</dd>
+        </dl>
+        <p className="mt-1 text-xs text-subtle">{text.fixedIncomeReserveHint(format.currency(MIN_STANDARD_POOL_BALANCE_CENTS))}</p>
       </div>
       <div className="flex items-center justify-between border-t border-line px-5 py-3 text-[13px]">
         <span className="text-muted">{text.nextUnlock}</span>

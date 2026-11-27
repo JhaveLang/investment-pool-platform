@@ -28,6 +28,7 @@ export const investorNavItems: NavItem[] = [
   { href: "/dashboard", labelKey: "dashboard", icon: "grid" },
   { href: "/deposit", labelKey: "moveMoney", icon: "swap", alsoActiveOn: ["/withdraw"] },
   { href: "/transactions", labelKey: "transactions", icon: "list" },
+  { href: "/promos", labelKey: "promos", icon: "percent" },
 ];
 
 export const adminNavItems: NavItem[] = [
@@ -36,6 +37,8 @@ export const adminNavItems: NavItem[] = [
   { href: "/admin/withdrawals", labelKey: "adminWithdrawals", icon: "send" },
   { href: "/admin/investors", labelKey: "adminInvestors", icon: "users" },
   { href: "/admin/returns", labelKey: "adminReturns", icon: "trendingUp" },
+  { href: "/admin/pool", labelKey: "adminPool", icon: "bank" },
+  { href: "/admin/promos", labelKey: "adminPromos", icon: "percent" },
   { href: "/admin/reports", labelKey: "adminReports", icon: "file" },
   { href: "/admin/news", labelKey: "adminNews", icon: "globe" },
   { href: "/admin/activity", labelKey: "adminActivity", icon: "activity" },

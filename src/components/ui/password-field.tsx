@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type ComponentProps } from "react";
 import { useMessages } from "@/i18n/client";
+import { buttonStyles } from "./button";
 import { FormField } from "./form-field";
 import { Icon } from "./icon";
 
@@ -39,9 +40,10 @@ export function PasswordField(props: PasswordFieldProps) {
           // Keeps the cursor in the field (and the keyboard open on phones).
           onMouseDown={(event) => event.preventDefault()}
           onClick={() => setVisible((current) => !current)}
-          aria-label={label}
+          aria-label={text.showPassword}
+          aria-pressed={visible}
           title={label}
-          className="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-r-lg text-subtle transition-colors hover:text-fg focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent-400"
+          className={buttonStyles({ variant: visible ? "selected" : "ghost", size: "icon", className: "absolute inset-y-0 right-0 h-full w-11 focus-visible:-outline-offset-2" })}
         >
           <Icon name={visible ? "eyeOff" : "eye"} />
         </button>

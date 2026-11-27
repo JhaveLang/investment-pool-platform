@@ -7,7 +7,13 @@ import { getFormatter } from "@/lib/format";
 import { isValidIban, normalizeIban } from "@/lib/iban";
 import { INVESTOR_CODE_MAX_LENGTH, INVESTOR_CODE_MIN_LENGTH, INVESTOR_CODE_PATTERN } from "@/lib/investor-code";
 import { MAX_NEWS_TEXT_LENGTH } from "@/lib/news";
+import { MAX_PROMO_DETAILS_LENGTH } from "@/lib/promo";
 import { MAX_TRANSACTION_CENTS, MIN_TRANSACTION_CENTS, parseAmountToCents, parsePercentToPpm } from "@/lib/money";
+import {
+  HIGHEST_WITHDRAWAL_MIN_CENTS,
+  LOWEST_WITHDRAWAL_MAX_CENTS,
+  MAX_POOL_NOTICE_LENGTH,
+} from "@/lib/pool-settings";
 import { MAX_RATE_PPM, MIN_RATE_PPM_EXCLUSIVE } from "@/lib/returns";
 
 /** At most this many investor IDs are saved at once from the investor list (a page shows 20). */
@@ -75,6 +81,22 @@ function createSchemas(locale: Locale) {
     return amountCents;
   });
 
+  const wholeEuroAmountSchema = amountSchema.refine((value) => value % 100 === 0, { error: text.promoWholeEuros });
+
+  /** Promo percentages are kept to two decimals as integer basis points (2.00% -> 200). */
+  const promoReturnSchema = z.string().transform((value, context) => {
+    const basisPoints = parseAmountToCents(value, locale);
+    if (basisPoints === null || basisPoints <= 0) {
+      context.addIssue({ code: "custom", message: text.invalidRate });
+      return z.NEVER;
+    }
+    if (basisPoints > 10_000) {
+      context.addIssue({ code: "custom", message: text.promoReturnTooLarge });
+      return z.NEVER;
+    }
+    return basisPoints;
+  });
+
   const idempotencyKeySchema = z.uuid({ error: text.invalidRequest });
 
   const paymentMethodSchema = z.enum(PAYMENT_METHODS, { error: text.invalidPaymentMethod });
@@ -104,6 +126,12 @@ function createSchemas(locale: Locale) {
     .trim()
     .max(500, { error: text.noteTooLong })
     .transform((note) => note || undefined);
+
+  const optionalNoticeSchema = z
+    .string()
+    .trim()
+    .max(MAX_POOL_NOTICE_LENGTH, { error: text.newsTextTooLong(MAX_POOL_NOTICE_LENGTH) })
+    .transform((notice) => notice || null);
 
   // -------------------------------------------------------------------------
   // Form schemas
@@ -199,10 +227,68 @@ function createSchemas(locale: Locale) {
 
     newsIdSchema: z.uuid({ error: text.invalidRequest }),
 
+    promoIdSchema: z.uuid({ error: text.invalidRequest }),
+    promoBookingSchema: z.object({
+      promoId: z.uuid({ error: text.invalidRequest }),
+      amount: wholeEuroAmountSchema,
+      idempotencyKey: idempotencyKeySchema,
+    }).transform(({ promoId, amount, idempotencyKey }) => ({ promoId, amountCents: amount, idempotencyKey })),
+
+    promoOfferSchema: z
+      .object({
+        name: z.string().trim().min(1, { error: text.required }).max(100, { error: text.promoNameTooLong(100) }),
+        bookingUntil: z.iso.date({ error: text.invalidDate }),
+        minDeposit: wholeEuroAmountSchema,
+        maxDeposit: wholeEuroAmountSchema,
+        termMonths: z.string().regex(/^\d+$/, { error: text.invalidRequest }).transform(Number).pipe(z.number().int().min(1, { error: text.invalidRequest }).max(120, { error: text.invalidRequest })),
+        totalReturn: promoReturnSchema,
+        details: z.string().trim().max(MAX_PROMO_DETAILS_LENGTH, { error: text.promoDetailsTooLong(MAX_PROMO_DETAILS_LENGTH) }),
+        isExample: z.boolean(),
+        visible: z.boolean(),
+      })
+      .refine((values) => values.minDeposit <= values.maxDeposit, {
+        error: text.maximumBelowMinimum,
+        path: ["maxDeposit"],
+      })
+      .transform(({ minDeposit, maxDeposit, totalReturn, ...rest }) => ({
+        ...rest,
+        minDepositCents: minDeposit,
+        maxDepositCents: maxDeposit,
+        totalReturnBps: totalReturn,
+      })),
+
+    /** The pool page; withdrawals can't be blocked through their limits (see `src/lib/pool-settings.ts`). */
+    poolSettingsSchema: z
+      .object({
+        depositsOpen: z.boolean(),
+        depositMin: amountSchema,
+        depositMax: amountSchema,
+        withdrawalMin: amountSchema.refine((amountCents) => amountCents <= HIGHEST_WITHDRAWAL_MIN_CENTS, {
+          error: text.withdrawalMinTooHigh(format.currency(HIGHEST_WITHDRAWAL_MIN_CENTS)),
+        }),
+        withdrawalMax: amountSchema.refine((amountCents) => amountCents >= LOWEST_WITHDRAWAL_MAX_CENTS, {
+          error: text.withdrawalMaxTooLow(format.currency(LOWEST_WITHDRAWAL_MAX_CENTS)),
+        }),
+        noticeDe: optionalNoticeSchema,
+        noticeEn: optionalNoticeSchema,
+      })
+      .refine((values) => values.depositMin <= values.depositMax, {
+        error: text.maximumBelowMinimum,
+        path: ["depositMax"],
+      })
+      .transform(({ depositMin, depositMax, withdrawalMin, withdrawalMax, ...rest }) => ({
+        ...rest,
+        depositMinCents: depositMin,
+        depositMaxCents: depositMax,
+        withdrawalMinCents: withdrawalMin,
+        withdrawalMaxCents: withdrawalMax,
+      })),
+
     depositSchema: z.object({
       amount: amountSchema,
       method: paymentMethodSchema,
       idempotencyKey: idempotencyKeySchema,
+      promoOfferId: z.string().optional().transform((value) => value || undefined).pipe(z.uuid().optional()),
     }),
 
     /** Bank payouts need an IBAN, crypto and exchange payouts a wallet address. */

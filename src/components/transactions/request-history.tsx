@@ -4,6 +4,7 @@ import { Icon } from "@/components/ui/icon";
 import { Table, TableBody, TableCell, TableHeaderCell } from "@/components/ui/table";
 import { getI18n } from "@/i18n/server";
 import { cn } from "@/lib/cn";
+import { addCalendarMonths } from "@/lib/calendar";
 import { formatPayoutDestination } from "@/lib/iban";
 import type { RecentDeposit, RecentWithdrawal } from "@/server/queries/investor";
 
@@ -31,6 +32,8 @@ export async function DepositHistory({ deposits, emptyText }: { deposits: Recent
                 <p className="truncate text-sm font-semibold text-fg">{messages.paymentMethods[deposit.method]}</p>
                 <p className="text-xs text-muted">{format.dateTime(deposit.createdAt)}</p>
                 <p className="reference truncate text-xs text-accent-400">{deposit.reference}</p>
+                {deposit.promoOfferName ? <p className="mt-1 text-xs font-medium text-accent-400">{deposit.promoOfferName}</p> : null}
+                {deposit.promoOfferName && deposit.receivedOn && deposit.promoTermMonths ? <p className="text-xs text-muted">{text.promoMatures(format.calendarDate(addCalendarMonths(deposit.receivedOn, deposit.promoTermMonths)))}</p> : null}
               </div>
             </div>
             <div className="flex shrink-0 flex-col items-end gap-1">
@@ -79,6 +82,8 @@ export async function DepositHistory({ deposits, emptyText }: { deposits: Recent
                       {text.receivedOn(format.calendarDate(deposit.receivedOn))}
                     </p>
                   ) : null}
+                  {deposit.promoOfferName ? <p className="mt-1 text-xs font-medium text-accent-400">{deposit.promoOfferName}</p> : null}
+                  {deposit.promoOfferName && deposit.receivedOn && deposit.promoTermMonths ? <p className="mt-1 text-xs whitespace-nowrap text-muted">{text.promoMatures(format.calendarDate(addCalendarMonths(deposit.receivedOn, deposit.promoTermMonths)))}</p> : null}
                 </TableCell>
               </tr>
             ))}

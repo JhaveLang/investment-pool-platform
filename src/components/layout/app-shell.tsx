@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { logoutAction } from "@/actions/auth";
+import { buttonStyles } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { ADMIN_DOCK_COUNT, type NavItem } from "@/config/navigation";
 import { getI18n } from "@/i18n/server";
@@ -34,7 +35,7 @@ export async function AppShell({ user, navItems, homeHref, topBarActions, childr
     <form action={logoutAction}>
       <button
         type="submit"
-        className="flex w-full items-center gap-3 rounded-lg px-4 py-2.5 text-[13px] font-medium text-muted transition-colors hover:bg-overlay hover:text-fg"
+        className={buttonStyles({ variant: "ghost", className: "w-full justify-start gap-3" })}
       >
         <Icon name="logOut" className="size-5" />
         {messages.nav.logout}
@@ -110,7 +111,7 @@ export async function AppShell({ user, navItems, homeHref, topBarActions, childr
               </div>
               <Link
                 href={profilePathForRole(user.role)}
-                className="mt-1 flex w-full items-center gap-3 rounded-lg px-4 py-2.5 text-[13px] font-medium text-muted transition-colors hover:bg-overlay hover:text-fg"
+                className={buttonStyles({ variant: "ghost", className: "mt-1 w-full justify-start gap-3" })}
               >
                 <Icon name="users" className="size-5" />
                 {messages.nav.profile}

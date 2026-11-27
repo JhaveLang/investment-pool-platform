@@ -6,7 +6,8 @@ import { depositFeeCents, type PaymentMethod } from "@/lib/fees";
 import { formatIsoDate } from "@/lib/format";
 import { getDb, type DbTransaction } from "@/server/db/client";
 import { accounts, deposits, type Deposit, type DepositStatus } from "@/server/db/schema";
-import { loadReservedPayoutCents } from "@/server/queries/accrual";
+import { loadActivePromoStandardReserveCents, loadReservedPayoutCents, loadReservedPromoBookingCents } from "@/server/queries/accrual";
+import { getPoolSettings } from "@/server/queries/pool-settings";
 import { recordAudit } from "./audit";
 import { generateReference, lockAccountForUser, postLedgerEntry } from "./ledger";
 import type { ReviewInput } from "./types";
@@ -16,6 +17,7 @@ type CreateDepositInput = {
   amountCents: number;
   method: PaymentMethod;
   idempotencyKey: string;
+  promoOfferId?: string | null;
   ipAddress: string | null;
 };
 
@@ -32,9 +34,10 @@ function creditedCents(deposit: Deposit): number {
 /**
  * Records a deposit the investor has sent. It waits in "pending" until an admin reconciles it
  * with the actual receipt date; only then is the balance credited (see `reconcileDeposit`).
- * Re-submitting the same form (same idempotency key) returns the original deposit.
+ * Re-submitting the same form (same idempotency key) returns the original deposit. Closed by the
+ * admin, the pool takes none.
  */
-export async function createDeposit(input: CreateDepositInput): Promise<Deposit> {
+export async function createDeposit(input: CreateDepositInput): Promise<Deposit & { newlyCreated: boolean }> {
   return getDb().transaction(async (tx) => {
     const account = await lockAccountForUser(tx, input.userId);
 
@@ -43,8 +46,12 @@ export async function createDeposit(input: CreateDepositInput): Promise<Deposit>
       .from(deposits)
       .where(and(eq(deposits.accountId, account.id), eq(deposits.idempotencyKey, input.idempotencyKey)));
     if (existingDeposit) {
-      return existingDeposit;
+      return { ...existingDeposit, newlyCreated: false };
     }
+    if (!(await getPoolSettings(tx)).depositsOpen) {
+      throw new DomainError("DEPOSITS_CLOSED");
+    }
+    if (input.promoOfferId) throw new DomainError("PROMO_NOT_BOOKABLE");
 
     const [deposit] = await tx
       .insert(deposits)
@@ -67,12 +74,13 @@ export async function createDeposit(input: CreateDepositInput): Promise<Deposit>
         amountCents: deposit.amountCents,
         method: deposit.method,
         feeCents: deposit.feeCents,
+        promoOfferId: deposit.promoOfferId,
         reference: deposit.reference,
       },
       ipAddress: input.ipAddress,
     });
 
-    return deposit;
+    return { ...deposit, newlyCreated: true };
   });
 }
 
@@ -86,8 +94,8 @@ export async function createDeposit(input: CreateDepositInput): Promise<Deposit>
  * deposit that could earn in it is still pending, so a deposit reconciled afterwards always
  * starts earning after every booked month.
  */
-export async function reconcileDeposit(input: ReconcileDepositInput): Promise<void> {
-  await getDb().transaction(async (tx) => {
+export async function reconcileDeposit(input: ReconcileDepositInput): Promise<number> {
+  return getDb().transaction(async (tx) => {
     const [pendingDeposit] = await tx
       .select({ createdAt: deposits.createdAt, creditedAt: deposits.creditedAt })
       .from(deposits)
@@ -119,7 +127,7 @@ export async function reconcileDeposit(input: ReconcileDepositInput): Promise<vo
         });
       }
     }
-    await recordAudit(tx, {
+    return recordAudit(tx, {
       actorUserId: input.reviewerId,
       action: "deposit.reconciled",
       entityType: "deposit",
@@ -139,10 +147,10 @@ export async function reconcileDeposit(input: ReconcileDepositInput): Promise<vo
  * Cancels a deposit whose funds never arrived. Nothing was credited, so nothing is booked.
  * A deposit submitted before the approval rule was already credited: its credited amount
  * (deposit minus fee) is reversed in one entry, which fails with INSUFFICIENT_FUNDS if that
- * money has been withdrawn or is reserved for a pending withdrawal.
+ * money has been withdrawn or is reserved for a withdrawal or fixed income investment.
  */
-export async function rejectDeposit(input: ReviewInput): Promise<void> {
-  await getDb().transaction(async (tx) => {
+export async function rejectDeposit(input: ReviewInput): Promise<number> {
+  return getDb().transaction(async (tx) => {
     const deposit = await finalizePendingDeposit(tx, input, "rejected");
 
     if (deposit.creditedAt !== null) {
@@ -151,8 +159,10 @@ export async function rejectDeposit(input: ReviewInput): Promise<void> {
         .from(accounts)
         .where(eq(accounts.id, deposit.accountId))
         .for("update");
-      const reservedCents = await loadReservedPayoutCents(tx, deposit.accountId);
-      if (account.balanceCents - creditedCents(deposit) < reservedCents) {
+      const reservedPayoutCents = await loadReservedPayoutCents(tx, deposit.accountId);
+      const pendingTransferCents = await loadReservedPromoBookingCents(tx, deposit.accountId);
+      const standardReserveCents = await loadActivePromoStandardReserveCents(tx, deposit.accountId);
+      if (account.balanceCents - creditedCents(deposit) < reservedPayoutCents + pendingTransferCents + standardReserveCents) {
         throw new DomainError("INSUFFICIENT_FUNDS");
       }
       await postLedgerEntry(tx, {
@@ -164,7 +174,7 @@ export async function rejectDeposit(input: ReviewInput): Promise<void> {
       });
     }
 
-    await recordAudit(tx, {
+    return recordAudit(tx, {
       actorUserId: input.reviewerId,
       action: "deposit.rejected",
       entityType: "deposit",

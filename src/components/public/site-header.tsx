@@ -24,6 +24,8 @@ export async function SiteHeader() {
   const account = await getAccountLink();
   const items: PublicNavItem[] = [
     { href: "/", label: text.home },
+    { href: "/services", label: text.services },
+    { href: "/faq", label: text.faq },
     { href: "/news", label: text.news },
     { href: "/contact", label: text.contact },
   ];
@@ -35,15 +37,15 @@ export async function SiteHeader() {
   );
 
   return (
-    <header className="sticky top-0 z-30 border-b border-line/70 bg-canvas/85 pt-[env(safe-area-inset-top)] backdrop-blur-xl">
+    <header className="sticky top-0 z-30 border-b border-line/70 bg-canvas/95 pt-[env(safe-area-inset-top)] backdrop-blur-xl">
       <div className={cn(publicContainer, "relative flex h-16 items-center justify-between gap-4")}>
         <Brand />
-        <div className="hidden items-center gap-5 md:flex">
+        <div className="hidden items-center gap-5 lg:flex">
           <PublicNav items={items} label={text.navLabel} />
           <LocaleSwitcher />
           {accountButton()}
         </div>
-        <div className="md:hidden">
+        <div className="lg:hidden">
           <PublicMobileMenu items={items} label={text.menu}>
             {accountButton()}
             <LocaleSwitcher />

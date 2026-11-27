@@ -1,13 +1,17 @@
 "use client";
 
 import { useFormatter, useLocale, useMessages } from "@/i18n/client";
+import { buttonStyles } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
-import { MAX_TRANSACTION_CENTS, MIN_TRANSACTION_CENTS, parseAmountToCents } from "@/lib/money";
+import { parseAmountToCents } from "@/lib/money";
+import type { AmountLimits } from "@/lib/pool-settings";
 
 type AmountFieldProps = {
   label: string;
   value: string;
   onChange: (value: string) => void;
+  /** Limits of one request, shown to the right of the label. */
+  limits: AmountLimits;
   /** Steps added to the current amount, in cents. */
   quickAdds: number[];
   /** Fills in the largest possible amount, e.g. what can be withdrawn on this route. */
@@ -22,6 +26,7 @@ export function AmountField({
   label,
   value,
   onChange,
+  limits,
   quickAdds,
   maxCents,
   placeholder,
@@ -35,8 +40,7 @@ export function AmountField({
   // Written back without grouping ("11000,00"), which parses in both languages.
   const setCents = (cents: number) => onChange(format.decimal(cents));
   const currentCents = parseAmountToCents(value, locale) ?? 0;
-  const pillStyles =
-    "rounded-lg bg-raised px-2 py-2.5 text-center text-[13px] font-semibold text-fg transition-colors hover:bg-overlay";
+  const quickAmountStyle = buttonStyles({ size: "sm", variant: "secondary", className: "min-h-9 px-1" });
 
   return (
     <div>
@@ -45,7 +49,7 @@ export function AmountField({
           {label}
         </label>
         <span className="text-xs text-subtle">
-          {text.limits(format.currency(MIN_TRANSACTION_CENTS), format.currency(MAX_TRANSACTION_CENTS))}
+          {text.limits(format.currency(limits.minCents), format.currency(limits.maxCents))}
         </span>
       </div>
       <div
@@ -77,8 +81,8 @@ export function AmountField({
           <button
             key={step}
             type="button"
-            onClick={() => setCents(Math.min(currentCents + step, MAX_TRANSACTION_CENTS))}
-            className={pillStyles}
+            onClick={() => setCents(Math.min(currentCents + step, limits.maxCents))}
+            className={quickAmountStyle}
             aria-label={text.addAmount(format.currency(step))}
           >
             +{format.wholeCurrency(step)}
@@ -89,7 +93,7 @@ export function AmountField({
             type="button"
             onClick={() => setCents(maxCents)}
             disabled={maxCents <= 0}
-            className={cn(pillStyles, "text-accent-400 disabled:opacity-40")}
+            className={quickAmountStyle}
           >
             {text.max}
           </button>

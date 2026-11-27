@@ -18,6 +18,7 @@ type StatementExportProps = {
   defaultTo: IsoMonth;
   /** Filters passed on unchanged, e.g. the investor list's status and search. */
   hidden?: Record<string, string | undefined>;
+  selectedPeriod?: { value: string; label: string };
 };
 
 /**
@@ -32,9 +33,13 @@ export async function StatementExport({
   defaultFrom,
   defaultTo,
   hidden = {},
+  selectedPeriod,
 }: StatementExportProps) {
   const { messages, format } = await getI18n();
   const text = messages.admin.investorExport;
+  const hiddenInputs = Object.entries(hidden).map(([name, value]) =>
+    value ? <input key={name} type="hidden" name={name} value={value} /> : null,
+  );
   const options = months.map((month) => (
     <option key={month} value={month}>
       {format.month(month)}
@@ -54,11 +59,19 @@ export async function StatementExport({
         </>
       }
     >
-      {/* A download: the page stays, so unsaved changes on it don't hold the export. */}
+      {selectedPeriod && (
+        <form action={action} method="get" className="mb-5 border-b border-line pb-4" {...keepsPage}>
+          {hiddenInputs}
+          <input type="hidden" name="period" value={selectedPeriod.value} />
+          <button type="submit" className={buttonStyles({ className: "w-full" })}>
+            <Icon name="download" className="size-4" />
+            {messages.admin.statementPeriod.download(selectedPeriod.label)}
+          </button>
+        </form>
+      )}
       <form action={action} method="get" className="space-y-4" {...keepsPage}>
-        {Object.entries(hidden).map(([name, value]) =>
-          value ? <input key={name} type="hidden" name={name} value={value} /> : null,
-        )}
+        {hiddenInputs}
+        {selectedPeriod && <p className={labelStyles}>{messages.admin.statementPeriod.monthlyRange}</p>}
         <div className="grid grid-cols-2 gap-3">
           <label className="block">
             <span className={labelStyles}>{text.from}</span>

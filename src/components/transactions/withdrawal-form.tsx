@@ -9,7 +9,8 @@ import { SubmitButton } from "@/components/ui/submit-button";
 import { useFormatter, useLocale, useMessages } from "@/i18n/client";
 import { fieldErrorsOf, idleActionState, submittedValuesOf } from "@/lib/action-state";
 import { FEE_PERCENT, maxWithdrawalPayoutCents, withdrawalFeeCents } from "@/lib/fees";
-import { MAX_TRANSACTION_CENTS, parseAmountToCents } from "@/lib/money";
+import { parseAmountToCents } from "@/lib/money";
+import { withdrawalLimits, type PoolSettings } from "@/lib/pool-settings";
 import { PAYOUT_DEADLINE_DAYS } from "@/lib/returns";
 import { AmountField } from "./amount-field";
 import { Breakdown, ProjectedBalance } from "./breakdown";
@@ -22,9 +23,10 @@ type WithdrawalFormProps = {
   balanceCents: number;
   /** Balance minus capital in the minimum term; payout plus fee must fit into it. */
   availableCents: number;
+  settings: Pick<PoolSettings, "withdrawalMinCents" | "withdrawalMaxCents">;
 };
 
-export function WithdrawalForm({ idempotencyKey, balanceCents, availableCents }: WithdrawalFormProps) {
+export function WithdrawalForm({ idempotencyKey, balanceCents, availableCents, settings }: WithdrawalFormProps) {
   const text = useMessages().withdrawals;
   const locale = useLocale();
   const format = useFormatter();
@@ -37,7 +39,8 @@ export function WithdrawalForm({ idempotencyKey, balanceCents, availableCents }:
   const amountCents = parseAmountToCents(amountText, locale);
   const feeCents = amountCents === null ? 0 : withdrawalFeeCents(amountCents, method);
   const debitCents = amountCents === null ? 0 : amountCents + feeCents;
-  const maxPayoutCents = Math.min(maxWithdrawalPayoutCents(availableCents, method), MAX_TRANSACTION_CENTS);
+  const limits = withdrawalLimits(settings, availableCents, method);
+  const maxPayoutCents = Math.min(maxWithdrawalPayoutCents(availableCents, method), limits.maxCents);
 
   return (
     <form action={formAction} onReset={() => setAmountText("")} noValidate className="flex flex-col gap-5">
@@ -56,6 +59,7 @@ export function WithdrawalForm({ idempotencyKey, balanceCents, availableCents }:
         label={text.amount}
         value={amountText}
         onChange={setAmountText}
+        limits={limits}
         quickAdds={QUICK_ADDS}
         maxCents={maxPayoutCents}
         placeholder={text.amountPlaceholder}

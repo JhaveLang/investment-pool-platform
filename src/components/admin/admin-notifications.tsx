@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createContext, use, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { useEventStream, useToasts, type ConnectionStatus } from "@/components/live-events";
+import { buttonStyles } from "@/components/ui/button";
 import { Icon, type IconName } from "@/components/ui/icon";
 import { Toast, ToastRegion } from "@/components/ui/toast";
 import { useFormatter, useMessages } from "@/i18n/client";
@@ -233,7 +234,7 @@ export function NotificationBell() {
         aria-haspopup="true"
         aria-expanded={open}
         aria-label={text.open(unreadCount)}
-        className="relative grid size-10 place-items-center rounded-full text-muted transition-colors hover:bg-overlay hover:text-fg"
+        className={buttonStyles({ size: "icon", variant: open ? "selected" : "ghost", className: "relative" })}
       >
         <Icon name="bell" className="size-5" />
         {unreadCount > 0 ? (

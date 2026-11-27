@@ -65,7 +65,12 @@ export async function getAdminNotification(id: number): Promise<AdminNotificatio
 }
 
 /** An investor update together with the investor it belongs to. */
-type AddressedInvestorNotification = { userId: string; notification: InvestorNotification };
+type AddressedInvestorNotification = {
+  userId: string;
+  email: string;
+  investorCode: string | null;
+  notification: InvestorNotification;
+};
 
 const REQUEST_DECISIONS = [
   "deposit.reconciled",
@@ -88,6 +93,8 @@ async function selectInvestorNotifications(filter: SQL, limit: number): Promise<
         action: auditLogs.action,
         createdAt: auditLogs.createdAt,
         userId: accounts.userId,
+        email: users.email,
+        investorCode: users.investorCode,
         depositReference: deposits.reference,
         creditedCents: sql<number | null>`${deposits.amountCents} - ${deposits.feeCents}`.mapWith(Number),
         withdrawalReference: withdrawals.reference,
@@ -100,6 +107,7 @@ async function selectInvestorNotifications(filter: SQL, limit: number): Promise<
         and(eq(auditLogs.entityType, "withdrawal"), sql`${auditLogs.entityId} = ${withdrawals.id}::text`),
       )
       .innerJoin(accounts, sql`${accounts.id} = coalesce(${deposits.accountId}, ${withdrawals.accountId})`)
+      .innerJoin(users, eq(users.id, accounts.userId))
       .where(and(inArray(auditLogs.action, [...REQUEST_DECISIONS]), filter))
       .orderBy(desc(auditLogs.id))
       .limit(limit),
@@ -108,6 +116,8 @@ async function selectInvestorNotifications(filter: SQL, limit: number): Promise<
         id: auditLogs.id,
         createdAt: auditLogs.createdAt,
         userId: accounts.userId,
+        email: users.email,
+        investorCode: users.investorCode,
         month: sql<string>`to_char(${returnPeriods.periodStart}, 'YYYY-MM')`,
         returnCents: ledgerEntries.amountCents,
       })
@@ -118,6 +128,7 @@ async function selectInvestorNotifications(filter: SQL, limit: number): Promise<
       )
       .innerJoin(ledgerEntries, eq(ledgerEntries.returnPeriodId, returnPeriods.id))
       .innerJoin(accounts, eq(ledgerEntries.accountId, accounts.id))
+      .innerJoin(users, eq(users.id, accounts.userId))
       .where(and(eq(auditLogs.action, "returns.booked"), filter))
       .orderBy(desc(auditLogs.id))
       .limit(limit),
@@ -129,6 +140,8 @@ async function selectInvestorNotifications(filter: SQL, limit: number): Promise<
         ? [
             {
               userId: row.userId,
+              email: row.email,
+              investorCode: row.investorCode,
               notification: {
                 id: row.id,
                 type: row.action,
@@ -143,6 +156,8 @@ async function selectInvestorNotifications(filter: SQL, limit: number): Promise<
     ),
     ...bookings.map((row) => ({
       userId: row.userId,
+      email: row.email,
+      investorCode: row.investorCode,
       notification: {
         id: row.id,
         type: "returns.booked" as const,
@@ -170,6 +185,10 @@ export async function listInvestorNotifications(options: {
   return addressed.slice(0, options.limit).map((entry) => entry.notification);
 }
 
+export function listInvestorsForNotification(auditLogId: number) {
+  return selectInvestorNotifications(eq(auditLogs.id, auditLogId), Number.MAX_SAFE_INTEGER);
+}
+
 /** Who must hear about one activity-log entry: the admin view, and the investors it concerns. */
 export async function getLiveEvent(auditLogId: number): Promise<{
   admin: AdminNotification | null;
@@ -177,7 +196,7 @@ export async function getLiveEvent(auditLogId: number): Promise<{
 }> {
   const [admin, investors] = await Promise.all([
     getAdminNotification(auditLogId),
-    selectInvestorNotifications(eq(auditLogs.id, auditLogId), Number.MAX_SAFE_INTEGER),
+    listInvestorsForNotification(auditLogId),
   ]);
   return { admin, investors };
 }

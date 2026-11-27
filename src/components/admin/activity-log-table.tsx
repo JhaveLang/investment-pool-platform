@@ -45,6 +45,9 @@ function describeEntry({ entityType, entityId, metadata }: AuditLogRow, { messag
   if (entityType === "news") {
     details.push(...describeNews(metadata, { messages, format }));
   }
+  if (entityType === "pool") {
+    details.push(...describePoolSettings(metadata.changes, { messages, format }));
+  }
   return details;
 }
 
@@ -90,6 +93,30 @@ function describeChanges(changes: unknown, labels: { investorCode: string; name:
   return fields.flatMap(({ key, label }) => {
     const change: unknown = (changes as Record<string, unknown>)[key];
     return isFieldChange(change) ? [`${label}: ${String(change.from)} → ${String(change.to)}`] : [];
+  });
+}
+
+/** "Setting: from → to" lines for the changed pool settings. */
+function describePoolSettings(changes: unknown, { messages, format }: Pick<I18n, "messages" | "format">): string[] {
+  if (typeof changes !== "object" || changes === null) {
+    return [];
+  }
+  const text = messages.admin.pool;
+  const describeValue = (field: string, value: unknown) => {
+    if (typeof value === "string" && (field === "depositsFrom" || field === "depositsUntil")) {
+      return format.calendarDate(value);
+    }
+    if (typeof value === "boolean") {
+      return value ? text.states.open : text.states.closed;
+    }
+    if (typeof value === "number") {
+      return format.currency(value);
+    }
+    return typeof value === "string" ? messages.common.quoted(value) : messages.common.emptyValue;
+  };
+  return Object.entries(text.fields).flatMap(([field, label]) => {
+    const change: unknown = (changes as Record<string, unknown>)[field];
+    return isFieldChange(change) ? [`${label}: ${describeValue(field, change.from)} → ${describeValue(field, change.to)}`] : [];
   });
 }
 

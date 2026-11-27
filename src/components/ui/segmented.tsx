@@ -1,11 +1,11 @@
-import { cn } from "@/lib/cn";
+import { buttonStyles, type ButtonSize } from "./button";
 
-/** A row of link chips for filters and sort orders; the active one is filled plum. */
 export const segmentGroupStyles = "flex flex-wrap gap-1.5";
 
-export function segmentStyles(isActive: boolean): string {
-  return cn(
-    "rounded-full px-3.5 py-1.5 text-[13px] font-medium whitespace-nowrap transition-colors",
-    isActive ? "bg-accent-500 font-semibold text-accent-deep" : "bg-raised text-muted hover:bg-overlay hover:text-fg",
-  );
+export function segmentStyles(isActive: boolean, size: ButtonSize = "sm"): string {
+  return buttonStyles({
+    size,
+    variant: isActive ? "selected" : "ghost",
+    className: isActive ? "no-underline" : "bg-overlay text-fg hover:bg-highest",
+  });
 }
