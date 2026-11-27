@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { getI18n } from "@/i18n/server";
 import { todayIsoDate } from "@/lib/calendar";
+import { isPromoBookable, maxPromoBookingCents, MIN_STANDARD_POOL_BALANCE_CENTS } from "@/lib/promo";
 import { requireInvestor } from "@/server/auth/guards";
 import { getAccountOverview } from "@/server/queries/investor";
 import { getPromoOffer } from "@/server/queries/promos";
@@ -15,9 +16,9 @@ export default async function BookPromoPage({ params }: PageProps<"/promos/[prom
   const { promoId } = await params;
   const [offer, overview, { messages, format }] = await Promise.all([getPromoOffer(promoId), getAccountOverview(user.id), getI18n()]);
   if (!offer) notFound();
-  if (!offer.visible || offer.isExample || offer.bookingUntil < todayIsoDate()) redirect("/promos");
-  const transferableCents = Math.max(0, overview.balanceCents - overview.lockedCents - overview.reservedCents - overview.pendingPromoCents - 100_000);
-  const maxCents = Math.min(offer.maxDepositCents, transferableCents);
+  if (!isPromoBookable(offer, todayIsoDate())) redirect("/promos");
+  const reservedCents = overview.reservedCents + overview.pendingPromoCents;
+  const bookableCents = maxPromoBookingCents(offer, overview);
   const text = messages.admin.promos;
   return <>
     <PageHeader title={offer.name} description={text.bookingTerms} actions={<Link className="text-sm text-accent-700 underline" href="/promos">{text.backToPromos}</Link>} />
@@ -28,9 +29,38 @@ export default async function BookPromoPage({ params }: PageProps<"/promos/[prom
           <div><dt className="text-subtle">{text.maximum}</dt><dd className="font-medium">{format.currency(offer.maxDepositCents)}</dd></div>
           <div><dt className="text-subtle">{text.term}</dt><dd className="font-medium">{text.months(offer.termMonths)}</dd></div>
           <div><dt className="text-subtle">{text.totalReturnLabel}</dt><dd className="font-medium">{format.rate(offer.totalReturnBps * 100)}</dd></div>
-          <div className="col-span-2"><dt className="text-subtle">{text.availableTransfer}</dt><dd className="font-medium">{format.currency(transferableCents)}</dd></div>
         </dl>
-        {maxCents < offer.minDepositCents ? <p role="status" className="rounded-lg bg-well p-3 text-sm text-muted">{text.notEnoughTransferable}</p> : <PromoBookingForm promoId={offer.id} idempotencyKey={randomUUID()} minCents={offer.minDepositCents} maxCents={maxCents} />}
+        <dl className="space-y-2 border-t border-line pt-4 text-sm">
+          <div className="flex items-baseline justify-between gap-3">
+            <dt>{messages.dashboard.balance}</dt>
+            <dd className="amount font-medium">{format.currency(overview.balanceCents)}</dd>
+          </div>
+          {overview.lockedCents > 0 && (
+            <div className="flex items-baseline justify-between gap-3">
+              <dt>{messages.dashboard.locked}
+                {overview.nextUnlockOn && <span className="block text-xs text-subtle">{messages.dashboard.nextDepositUnlock(format.calendarDate(overview.nextUnlockOn))}</span>}
+              </dt>
+              <dd className="amount">{format.currency(overview.lockedCents)}</dd>
+            </div>
+          )}
+          {reservedCents > 0 && (
+            <div className="flex items-baseline justify-between gap-3">
+              <dt>{text.pendingReservations}</dt>
+              <dd className="amount">{format.currency(reservedCents)}</dd>
+            </div>
+          )}
+          <div className="flex items-baseline justify-between gap-3 font-semibold">
+            <dt>{text.availableTransfer}</dt>
+            <dd className="amount">{format.currency(bookableCents)}</dd>
+          </div>
+        </dl>
+        {bookableCents === 0 ? (
+          <p role="status" className="rounded-lg bg-well p-3 text-sm text-muted">
+            {text.notEnoughTransferable(format.currency(offer.minDepositCents + MIN_STANDARD_POOL_BALANCE_CENTS), format.currency(MIN_STANDARD_POOL_BALANCE_CENTS))}
+          </p>
+        ) : (
+          <PromoBookingForm promoId={offer.id} idempotencyKey={randomUUID()} minCents={offer.minDepositCents} maxCents={bookableCents} />
+        )}
       </CardContent>
     </Card>
   </>;

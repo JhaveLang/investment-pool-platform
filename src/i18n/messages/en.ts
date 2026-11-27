@@ -1,5 +1,11 @@
 import type { Messages } from "./de";
 
+const fixedIncomeEntries = {
+  promo_transfer: "Transfer to Fixed Incomes",
+  promo_principal_return: "Fixed income principal returned",
+  promo_return: "Fixed income return at maturity",
+};
+
 /** English translation. Typed as `Messages`, so a missing or misspelled key fails the build. */
 export const en: Messages = {
   app: {
@@ -9,10 +15,13 @@ export const en: Messages = {
 
   // The public website: start page, news, contact and legal pages.
   site: {
+    trustpilot: "Reviews on Trustpilot",
     navLabel: "Website",
     footerNav: "Website and legal",
     menu: "Menu",
     home: "Home",
+    services: "Our services",
+    faq: "FAQs",
     news: "News",
     contact: "Contact",
     signIn: "Sign in",
@@ -192,10 +201,13 @@ export const en: Messages = {
       later: "Later",
     },
     sumReturns: "Booked returns",
-    balance: "Balance",
+    balance: "Total in standard pool",
     availabilityTitle: "Availability",
-    available: "Available now",
-    locked: "In the minimum term",
+    availableForFixedIncomes: "Available for Fixed Incomes",
+    fixedIncomeReserveHint: (reserve: string) =>
+      `After the ${reserve} standard-pool reserve, rounded down to whole euros. Each offer’s investment limits apply.`,
+    available: "Available to withdraw",
+    locked: "Locked deposits",
     viewAll: "View all transactions",
     emptyTitle: "No transactions yet",
     emptyDescription: "Your account is open. Make your first deposit now.",
@@ -209,10 +221,7 @@ export const en: Messages = {
     minimumTermPill: (days: number) => `${days}-day minimum term`,
     netDeposits: "Net deposits",
     returnsBookedSuffix: "in returns booked",
-    availableShort: "Available",
-    availableNow: "Can be requested now",
-    lockedShort: "Locked",
-    freeFrom: (date: string) => `Free from ${date}`,
+    nextDepositUnlock: (date: string) => `Next deposit unlocks on ${date}.`,
     nothingLocked: "Nothing locked",
     payoutWithin: (days: number) => `Paid out within ${days} days`,
     shareOfBalance: (share: string) => `${share} of your balance`,
@@ -261,7 +270,6 @@ export const en: Messages = {
     typeAndDetails: "Type & details",
     groups: { all: "All", deposits: "Deposits", returns: "Returns", withdrawals: "Withdrawals" },
     filterLabel: "Filter bookings",
-    runningBalance: "Running balance",
     entriesTotal: (count: number) => (count === 1 ? "1 entry" : `${count} entries`),
     immutableTitle: "Immutable ledger",
     immutableText:
@@ -276,9 +284,7 @@ export const en: Messages = {
     deposit_fee: "Deposit fee",
     withdrawal_fee: "Withdrawal fee",
     monthly_return: "Return",
-    promo_transfer: "Transfer to Fixed Incomes",
-    promo_principal_return: "Fixed income principal returned",
-    promo_return: "Fixed income return at maturity",
+    ...fixedIncomeEntries,
   },
 
   paymentMethods: {
@@ -328,7 +334,7 @@ export const en: Messages = {
     accrualValue: (day: number) => `from day ${day} after receipt`,
     termLabel: "Minimum term",
     termValue: (days: number) => `${days} days from receipt`,
-    newBalance: "Balance after reconciliation",
+    newBalance: "Standard pool total after deposit",
     submitAmount: (amount: string) => `Book deposit (${amount})`,
     ledgerNote: "Recorded permanently in the ledger once reconciled",
   },
@@ -351,7 +357,7 @@ export const en: Messages = {
     pending: "Submitting …",
     maxPayout: (amount: string) => `Maximum payout with this method: ${amount}`,
     locked: (amount: string, date: string) =>
-      `${amount} is still within the 60-day minimum term (free from ${date}). Returns can be withdrawn at any time.`,
+      `Your locked deposits total ${amount}. The next deposit unlocks on ${date}.`,
     info: "You receive the full amount; the fee is debited on top. The amount is reserved at once and debited from your balance when the payout is approved. From the day of the request it no longer earns returns, and the payout is made within 7 days. If the request is rejected, the reservation is released.",
     success: (reference: string) =>
       `Withdrawal requested. The amount is reserved until it is approved. Reference: ${reference}`,
@@ -363,7 +369,7 @@ export const en: Messages = {
     debitLabel: "Total debited",
     payoutLabel: "Payout",
     payoutValue: (days: number) => `within ${days} days`,
-    newBalance: "Balance after approval",
+    newBalance: "Standard pool total after withdrawal",
     submitAmount: (amount: string) => `Request withdrawal (${amount})`,
     ledgerNote: "Recorded permanently in the ledger once approved",
   },
@@ -460,15 +466,19 @@ export const en: Messages = {
       statusRejected: "Rejected",
       statusMatured: "Matured and paid",
       bookingLabel: "Bookable through",
-      minimum: "Minimum deposit",
-      maximum: "Maximum deposit",
+      minimum: "Minimum investment",
+      maximum: "Maximum investment",
       term: "Term",
       totalReturnLabel: "Total return at maturity",
       bookPromo: "Book fixed income offer",
+      bookingUnavailable: "Booking unavailable",
+      viewBalanceDetails: "View balance details",
       bookingTerms: "Fixed income transfers take 7 days to process. At least €1,000 must remain in the standard pool. Whole euros only. New deposits stay locked for 60 days from receipt.",
       requestedAmount: "Transfer from standard pool (€)",
-      availableTransfer: "Available to transfer after the minimum reserve",
-      notEnoughTransferable: "The available standard-pool balance is not enough for the minimum investment and €1,000 reserve.",
+      pendingReservations: "Reserved for pending requests",
+      availableTransfer: "Available to invest in this offer",
+      notEnoughTransferable: (required: string, reserve: string) =>
+        `You need ${required} in unlocked funds after pending requests to make the minimum investment and keep ${reserve} in your standard pool.`,
       requestBooking: "Request transfer",
       requestPending: "Submitting …",
       bookingRequested: (reference: string) => `Transfer requested. Reference: ${reference}.`,
@@ -527,8 +537,7 @@ export const en: Messages = {
     withdrawalsEmpty: "No withdrawals in this view.",
 
     investorsTitle: "Investors",
-    investorsSubtitle:
-      "All investors with their balance and the chosen month's figures. View shows everything about an investor.",
+    investorsSubtitle: "Current balances and statement figures for the selected month.",
     newInvestor: "New investor",
     investorActions: {
       view: "View",
@@ -538,7 +547,7 @@ export const en: Messages = {
       deactivateInvestor: (name: string) => `Deactivate ${name}`,
       activateInvestor: (name: string) => `Activate ${name}`,
     },
-    investorsEmpty: "No investors found.",
+    investorsEmpty: "No Investors found",
     searchLabel: "Search investors",
     searchPlaceholder: "Name, email or investor ID",
     searchButton: "Search",
@@ -655,7 +664,18 @@ export const en: Messages = {
     mismatchCount: (count: number) => `${count} off`,
     zeroBalanceAccounts: "Accounts with zero balance",
     integrityNote: "On every load, each balance is compared with the sum of its ledger entries.",
+    statementPeriod: {
+      invalid: "Choose a valid statement period through today.",
+      openingOn: (date: string) => `Opening balance on ${date}`,
+      hint: "Booked monthly returns appear on the last day of the earning month. Open requests are marked.",
+      upcoming: "Statement figures will be available when this month begins.",
+      exportTitle: "Export investor statements",
+      exportDescription: "Download the displayed statement or choose a range of monthly statements.",
+      download: (period: string) => `Download statement for ${period}`,
+      monthlyRange: "Monthly statements",
+    },
     investorMonth: {
+      closingBalance: "Booked closing balance",
       label: "Month",
       hint: "Amounts after fees · open requests are marked",
       investmentOn: (month: string) => `Investment on 1 ${month}`,
@@ -664,8 +684,8 @@ export const en: Messages = {
       pending: "open",
       miscTitle: (month: string) => `Miscellaneous ${month}`,
       miscDescription: (name: string) =>
-        `${name} · Deposits and withdrawals after fees, newest first. Open requests count once they are decided.`,
-      showMisc: (name: string, month: string) => `Show all deposits and withdrawals of ${name} in ${month}`,
+        `${name} · Deposits, withdrawals and Fixed Incomes movements after fees. Only booked amounts affect the closing balance.`,
+      showMisc: (name: string, month: string) => `Show all movements for ${name} in ${month}`,
       more: (count: number) => `+${count}`,
       bookedTotal: "Total booked",
       pendingTotal: "Open, not counted yet",
@@ -972,6 +992,10 @@ export const en: Messages = {
   },
 
   csv: {
+    fixedIncomeEntries,
+    reviewDifference: (amount: string) => `Review difference of ${amount}`,
+    closingBalance: "Booked closing balance (EUR)",
+    openingOn: (date: string) => `Opening balance on ${date} (EUR)`,
     entryNumber: "Entry no.",
     dateTime: "Date/time",
     investor: "Investor",

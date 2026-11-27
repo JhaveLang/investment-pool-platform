@@ -1,9 +1,10 @@
 import "server-only";
-import { and, asc, desc, eq, ilike, isNotNull, isNull, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, inArray, isNotNull, isNull, or, sql, type SQL } from "drizzle-orm";
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import { z } from "zod";
 import { normalizeInvestorCodeQuery } from "@/lib/investor-code";
 import { DEFAULT_PAGE_SIZE, toPaginatedResult, type PaginatedResult } from "@/lib/pagination";
+import type { StatementPeriod } from "@/lib/statement-period";
 import { getDb } from "@/server/db/client";
 import type { PaymentMethod } from "@/lib/fees";
 import {
@@ -19,6 +20,7 @@ import {
   type WithdrawalStatus,
 } from "@/server/db/schema";
 import { toContainsPattern } from "./filters";
+import { accountsWithStatementActivity } from "./statements";
 
 const countAndSum = (amountColumn: AnyPgColumn) => ({
   count: sql<number>`count(*)`.mapWith(Number),
@@ -235,15 +237,16 @@ const investorStatusFilters: Record<InvestorStatus, SQL> = {
 /** Status filter of the investor list, in tab order; the first ("all") is the default. */
 export const INVESTOR_LIST_FILTERS: readonly (InvestorStatus | "all")[] = ["all", "active", "deactivated"];
 
-type InvestorListFilter = { status: InvestorStatus | "all"; search?: string };
+type InvestorListFilter = { status: InvestorStatus | "all"; search?: string; period?: StatementPeriod };
 
-/** Investors with the chosen status whose name, email or investor ID contains the search text. */
-function investorListFilter({ status, search }: InvestorListFilter): SQL | undefined {
+/** Applies the same status, search and activity filters to table rows, pagination and exports. */
+function investorListFilter({ status, search, period }: InvestorListFilter): SQL | undefined {
   const searchTerm = search?.trim();
   const searchPattern = searchTerm ? toContainsPattern(searchTerm) : undefined;
   return and(
     eq(users.role, "investor"),
     status === "all" ? undefined : investorStatusFilters[status],
+    period ? inArray(accounts.id, accountsWithStatementActivity(period)) : undefined,
     searchPattern
       ? or(
           ilike(users.fullName, searchPattern),

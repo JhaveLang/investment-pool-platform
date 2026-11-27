@@ -84,6 +84,14 @@ describe("sumCapitalDays", () => {
 });
 
 describe("calculatePeriodReturn", () => {
+  it("reproduces the two compounded monthly returns in a statement without movements", () => {
+    const september = calculatePeriodReturn(BigInt(198_656 * 30), 50_000, 30);
+    expect(september.returnCents).toBe(9_933);
+    const octoberOpening = 198_656 + september.returnCents;
+    const october = calculatePeriodReturn(BigInt(octoberOpening * 31), 47_000, 31);
+    expect(october.returnCents).toBe(9_804);
+    expect(octoberOpening + october.returnCents).toBe(218_393);
+  });
   it("applies the full monthly rate to capital invested all month", () => {
     const capitalDays = BigInt(100_000 * 30);
     expect(calculatePeriodReturn(capitalDays, 23_500, 30)).toEqual({

@@ -15,6 +15,8 @@ export async function SiteFooter() {
   const columns = [
     [
       { href: "/", label: text.home },
+      { href: "/services", label: text.services },
+      { href: "/faq", label: text.faq },
       { href: "/news", label: text.news },
       { href: "/contact", label: text.contact },
       account,
@@ -22,6 +24,7 @@ export async function SiteFooter() {
     [
       { href: "/imprint", label: text.imprint },
       { href: "/privacy", label: text.privacy },
+      { href: SITE.trustpilotUrl, label: text.trustpilot },
     ],
   ];
 

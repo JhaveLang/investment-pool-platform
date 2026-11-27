@@ -3,6 +3,7 @@ import { and, asc, eq, inArray, isNotNull, isNull, ne, sql, type SQL } from "dri
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import type { IsoDate } from "@/lib/calendar";
 import { APP_TIME_ZONE } from "@/lib/format";
+import { MIN_STANDARD_POOL_BALANCE_CENTS } from "@/lib/promo";
 import { ACCRUAL_DELAY_DAYS, MINIMUM_TERM_DAYS, type CapitalChange, type PausedRange } from "@/lib/returns";
 import type { DbExecutor } from "@/server/db/client";
 import { accounts, auditLogs, deposits, ledgerEntries, promoBookings, returnPeriods, withdrawals } from "@/server/db/schema";
@@ -133,11 +134,12 @@ export async function loadReservedPromoBookingCents(executor: DbExecutor, accoun
   return (await loadReservedPromoBookings(executor, [accountId], excludeBookingId)).get(accountId) ?? 0;
 }
 
-/** A booked promo keeps a €1,000 floor in the standard pool until the promo matures. */
+/** One standard-pool reserve covers all pending and booked transfers for this account. */
 export async function loadActivePromoStandardReserveCents(executor: DbExecutor, accountId: string): Promise<number> {
-  const [row] = await executor.select({ count: sql<number>`count(*)`.mapWith(Number) }).from(promoBookings)
-    .where(and(eq(promoBookings.accountId, accountId), eq(promoBookings.status, "booked")));
-  return row.count > 0 ? 100_000 : 0;
+  const [active] = await executor.select({ id: promoBookings.id }).from(promoBookings)
+    .where(and(eq(promoBookings.accountId, accountId), inArray(promoBookings.status, ["pending", "booked"])))
+    .limit(1);
+  return active ? MIN_STANDARD_POOL_BALANCE_CENTS : 0;
 }
 
 /**

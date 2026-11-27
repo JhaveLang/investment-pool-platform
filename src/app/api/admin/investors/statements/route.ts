@@ -1,4 +1,6 @@
 import type { NextRequest } from "next/server";
+import { todayIsoDate } from "@/lib/calendar";
+import { parseStatementPeriod } from "@/lib/statement-period";
 import { parseChoiceParam } from "@/lib/pagination";
 import { authorizeAdminDownload, csvResponse, textResponse } from "@/server/csv-download";
 import { INVESTOR_LIST_FILTERS } from "@/server/queries/admin";
@@ -20,10 +22,18 @@ export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const search = searchParams.get("q")?.trim().slice(0, MAX_SEARCH_LENGTH) || undefined;
   const status = parseChoiceParam(searchParams.get("status") ?? undefined, INVESTOR_LIST_FILTERS, "all");
+  const value = searchParams.get("period");
+  const filterValue = searchParams.get("filterPeriod");
+  const today = todayIsoDate();
+  const period = value === null ? undefined : parseStatementPeriod(value, today);
+  const filterPeriod = filterValue === null ? undefined : parseStatementPeriod(filterValue, today);
+  if (period === null || filterPeriod === null) return textResponse(i18n.messages.admin.statementPeriod.invalid, 400);
 
   const result = await exportInvestorStatements({
     query: { from: searchParams.get("from"), to: searchParams.get("to") },
     status,
+    period,
+    filterPeriod,
     search,
     i18n,
     adminUserId: user.id,

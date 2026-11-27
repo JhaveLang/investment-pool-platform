@@ -4,6 +4,12 @@ import type { PaymentMethod } from "@/lib/fees";
 import type { PoolSettings } from "@/lib/pool-settings";
 import type { AdminNotificationType, InvestorNotificationType } from "@/lib/notifications";
 
+const fixedIncomeEntries = {
+  promo_transfer: "Übertrag in Festzinsanlage",
+  promo_principal_return: "Festzins-Kapitalrückzahlung",
+  promo_return: "Festzins-Rendite bei Fälligkeit",
+};
+
 /**
  * All user-facing text in German (the default locale). Components never hard-code
  * strings; they read from the active dictionary so wording lives in one place.
@@ -16,10 +22,13 @@ export const de = {
 
   // The public website: start page, news, contact and legal pages.
   site: {
+    trustpilot: "Bewertungen auf Trustpilot",
     navLabel: "Website",
     footerNav: "Website und Rechtliches",
     menu: "Menü",
     home: "Startseite",
+    services: "Unsere Leistungen",
+    faq: "FAQ",
     news: "News",
     contact: "Kontakt",
     signIn: "Anmelden",
@@ -202,10 +211,13 @@ export const de = {
       later: "Später",
     },
     sumReturns: "Verbuchte Rendite",
-    balance: "Kontostand",
+    balance: "Gesamtguthaben im Standard-Pool",
     availabilityTitle: "Verfügbarkeit",
-    available: "Frei verfügbar",
-    locked: "In der Mindestlaufzeit",
+    availableForFixedIncomes: "Für Fixed Incomes verfügbar",
+    fixedIncomeReserveHint: (reserve: string) =>
+      `Nach Abzug der Reserve von ${reserve} im Standard-Pool, auf volle Euro abgerundet. Es gelten die Anlagegrenzen des jeweiligen Angebots.`,
+    available: "Zur Auszahlung verfügbar",
+    locked: "Gebundene Einzahlungen",
     viewAll: "Alle Buchungen anzeigen",
     emptyTitle: "Noch keine Buchungen",
     emptyDescription: "Ihr Konto ist eröffnet. Tätigen Sie jetzt Ihre erste Einzahlung.",
@@ -219,10 +231,7 @@ export const de = {
     minimumTermPill: (days: number) => `Mindestlaufzeit ${days} Tage`,
     netDeposits: "Einzahlungen netto",
     returnsBookedSuffix: "Rendite verbucht",
-    availableShort: "Verfügbar",
-    availableNow: "Sofort beantragbar",
-    lockedShort: "Gebunden",
-    freeFrom: (date: string) => `Frei ab ${date}`,
+    nextDepositUnlock: (date: string) => `Die nächste Einzahlung wird am ${date} frei.`,
     nothingLocked: "Nichts gebunden",
     payoutWithin: (days: number) => `Auszahlung binnen ${days} Tagen`,
     shareOfBalance: (share: string) => `${share} des Kontostands`,
@@ -271,7 +280,6 @@ export const de = {
     typeAndDetails: "Art & Details",
     groups: { all: "Alle", deposits: "Einzahlungen", returns: "Rendite", withdrawals: "Auszahlungen" },
     filterLabel: "Buchungen filtern",
-    runningBalance: "Laufender Saldo",
     entriesTotal: (count: number) => (count === 1 ? "1 Eintrag" : `${count} Einträge`),
     immutableTitle: "Unveränderliches Journal",
     immutableText:
@@ -286,9 +294,7 @@ export const de = {
     deposit_fee: "Gebühr Einzahlung",
     withdrawal_fee: "Gebühr Auszahlung",
     monthly_return: "Rendite",
-    promo_transfer: "Übertrag in Festzinsanlage",
-    promo_principal_return: "Festzins-Kapitalrückzahlung",
-    promo_return: "Festzins-Rendite bei Fälligkeit",
+    ...fixedIncomeEntries,
   } satisfies Record<LedgerEntryType, string>,
 
   paymentMethods: {
@@ -338,7 +344,7 @@ export const de = {
     accrualValue: (day: number) => `ab Tag ${day} nach Eingang`,
     termLabel: "Mindestlaufzeit",
     termValue: (days: number) => `${days} Tage ab Eingang`,
-    newBalance: "Kontostand nach Abgleich",
+    newBalance: "Guthaben im Standard-Pool nach Einzahlung",
     submitAmount: (amount: string) => `Einzahlung buchen (${amount})`,
     ledgerNote: "Nach dem Abgleich unveränderlich im Journal gebucht",
   },
@@ -361,7 +367,7 @@ export const de = {
     pending: "Wird beantragt …",
     maxPayout: (amount: string) => `Maximal auszahlbar auf diesem Weg: ${amount}`,
     locked: (amount: string, date: string) =>
-      `${amount} sind noch in der 60-tägigen Mindestlaufzeit (frei ab ${date}). Renditen sind jederzeit auszahlbar.`,
+      `Einzahlungen in Höhe von insgesamt ${amount} sind noch gebunden. Die nächste Einzahlung wird am ${date} frei.`,
     info: "Sie erhalten den vollen Betrag, die Gebühr wird zusätzlich abgebucht. Der Betrag wird sofort reserviert und bei Genehmigung von Ihrem Kontostand abgebucht. Ab dem Tag des Antrags erhält er keine Rendite mehr; die Auszahlung erfolgt innerhalb von 7 Tagen. Wird der Antrag abgelehnt, wird die Reservierung aufgehoben.",
     success: (reference: string) =>
       `Auszahlung beantragt. Der Betrag ist bis zur Genehmigung reserviert. Referenz: ${reference}`,
@@ -373,7 +379,7 @@ export const de = {
     debitLabel: "Abbuchung gesamt",
     payoutLabel: "Auszahlung",
     payoutValue: (days: number) => `binnen ${days} Tagen`,
-    newBalance: "Kontostand nach Genehmigung",
+    newBalance: "Guthaben im Standard-Pool nach Auszahlung",
     submitAmount: (amount: string) => `Auszahlung beantragen (${amount})`,
     ledgerNote: "Nach der Genehmigung unveränderlich im Journal gebucht",
   },
@@ -470,15 +476,19 @@ export const de = {
       statusRejected: "Abgelehnt",
       statusMatured: "Fällig und ausgezahlt",
       bookingLabel: "Buchbar bis",
-      minimum: "Mindesteinzahlung",
-      maximum: "Höchsteinzahlung",
+      minimum: "Mindestanlage",
+      maximum: "Höchstanlage",
       term: "Laufzeit",
       totalReturnLabel: "Gesamtrendite bei Fälligkeit",
       bookPromo: "Festzinsanlage buchen",
+      bookingUnavailable: "Buchung derzeit nicht möglich",
+      viewBalanceDetails: "Guthaben im Detail ansehen",
       bookingTerms: "Festzins-Überträge benötigen 7 Tage Bearbeitung. Mindestens 1.000 € bleiben im Standard-Pool. Nur ganze Eurobeträge. Neue Einzahlungen bleiben ab Zahlungseingang 60 Tage gebunden.",
       requestedAmount: "Übertrag aus dem Standard-Pool (€)",
-      availableTransfer: "Derzeit übertragbar nach Abzug der Mindestreserve",
-      notEnoughTransferable: "Derzeit reicht das verfügbare Standard-Pool-Guthaben nicht für die Mindestanlage und die Reserve von 1.000 €.",
+      pendingReservations: "Für offene Anträge reserviert",
+      availableTransfer: "Für dieses Angebot verfügbar",
+      notEnoughTransferable: (required: string, reserve: string) =>
+        `Nach Abzug offener Anträge benötigen Sie ${required} an freiem Guthaben. Damit können Sie die Mindestanlage buchen und ${reserve} im Standard-Pool belassen.`,
       requestBooking: "Übertrag anfragen",
       requestPending: "Wird angefragt …",
       bookingRequested: (reference: string) => `Übertrag angefragt. Referenz: ${reference}.`,
@@ -537,8 +547,7 @@ export const de = {
     withdrawalsEmpty: "Keine Auszahlungen in dieser Ansicht.",
 
     investorsTitle: "Anleger",
-    investorsSubtitle:
-      "Alle Anleger mit Kontostand und den Zahlen des gewählten Monats. „Ansehen“ zeigt alles zu einem Anleger.",
+    investorsSubtitle: "Aktuelle Kontostände und Abrechnungswerte für den ausgewählten Monat.",
     newInvestor: "Neuer Anleger",
     investorActions: {
       view: "Ansehen",
@@ -666,7 +675,18 @@ export const de = {
     mismatchCount: (count: number) => `${count} abweichend`,
     zeroBalanceAccounts: "Konten ohne Guthaben",
     integrityNote: "Bei jedem Laden wird jeder Kontostand mit der Summe seiner Journalbuchungen verglichen.",
+    statementPeriod: {
+      invalid: "Bitte einen gültigen Abrechnungszeitraum bis einschließlich heute wählen.",
+      openingOn: (date: string) => `Anfangssaldo am ${date}`,
+      hint: "Gebuchte Monatsrenditen erscheinen am letzten Tag des jeweiligen Monats. Offene Anträge sind gekennzeichnet.",
+      upcoming: "Die Abrechnungswerte stehen ab Beginn dieses Monats zur Verfügung.",
+      exportTitle: "Anlegerabrechnungen exportieren",
+      exportDescription: "Die angezeigte Abrechnung herunterladen oder mehrere Monatsabrechnungen auswählen.",
+      download: (period: string) => `Abrechnung für ${period} herunterladen`,
+      monthlyRange: "Monatsabrechnungen",
+    },
     investorMonth: {
+      closingBalance: "Gebuchter Endsaldo",
       label: "Monat",
       hint: "Beträge nach Gebühren · offene Anträge sind markiert",
       investmentOn: (month: string) => `Anlage am 1. ${month}`,
@@ -675,8 +695,8 @@ export const de = {
       pending: "offen",
       miscTitle: (month: string) => `Sonstiges ${month}`,
       miscDescription: (name: string) =>
-        `${name} · Ein- und Auszahlungen nach Gebühren, neueste zuerst. Offene Anträge zählen erst nach der Entscheidung.`,
-      showMisc: (name: string, month: string) => `Alle Ein- und Auszahlungen von ${name} im ${month} anzeigen`,
+        `${name} · Einzahlungen, Auszahlungen und Festzinsbewegungen nach Gebühren. Nur gebuchte Beträge zählen zum Endsaldo.`,
+      showMisc: (name: string, month: string) => `Alle Bewegungen von ${name} im ${month} anzeigen`,
       more: (count: number) => `+${count}`,
       bookedTotal: "Summe gebucht",
       pendingTotal: "Offen, noch nicht gezählt",
@@ -987,6 +1007,10 @@ export const de = {
   },
 
   csv: {
+    fixedIncomeEntries,
+    reviewDifference: (amount: string) => `Differenz von ${amount} prüfen`,
+    closingBalance: "Gebuchter Endsaldo (EUR)",
+    openingOn: (date: string) => `Anfangssaldo am ${date} (EUR)`,
     entryNumber: "Buchungs-Nr.",
     dateTime: "Datum/Uhrzeit",
     investor: "Anleger",

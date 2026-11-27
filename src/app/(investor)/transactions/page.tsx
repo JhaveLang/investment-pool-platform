@@ -50,7 +50,7 @@ export default async function TransactionsPage({ searchParams }: PageProps<"/tra
         </div>
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="label-caps text-muted">{text.runningBalance}</p>
+            <p className="label-caps text-muted">{messages.dashboard.balance}</p>
             <p className="mt-1 font-display text-[32px] leading-10 font-bold tracking-tight text-fg">
               {format.currency(overview.balanceCents)}
             </p>

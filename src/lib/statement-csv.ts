@@ -2,7 +2,8 @@ import type { Messages } from "@/i18n/messages/de";
 import { addMonths, isIsoMonth, type IsoMonth } from "./calendar";
 import { buildCsv, type CsvColumn } from "./csv";
 import type { Formatter } from "./format";
-import type { MonthStatement, StatementMovement } from "./statements";
+import { statementVarianceCents, type MonthStatement, type StatementFigures, type StatementMovement } from "./statements";
+import { statementPeriodLabel, type StatementPeriod } from "./statement-period";
 
 /**
  * CSV exports of the monthly statement (see `src/lib/statements.ts`): all investors side by side like the client's
@@ -62,18 +63,18 @@ function amount(format: Formatter, cents: number | null): string | null {
  * The month's deposits and withdrawals as "26.09.2026: +1074,00 · 13.10.2026: -415,00 (offen)", oldest first. It
  * starts with the date, so spreadsheets don't read the sign as the start of a formula.
  */
-function describeMovements(movements: StatementMovement[], text: CsvText, format: Formatter): string | null {
-  if (movements.length === 0) {
-    return null;
-  }
-  return movements
+function describeMovements(statement: StatementFigures, text: CsvText, format: Formatter): string | null {
+  const descriptions = statement.movements
     .toSorted((left, right) => left.valueDate.localeCompare(right.valueDate))
     .map((movement) => {
       const sign = movement.amountCents > 0 ? "+" : "";
       const open = movement.pending ? ` (${text.pending})` : "";
-      return `${format.calendarDate(movement.valueDate)}: ${sign}${format.decimal(movement.amountCents)}${open}`;
-    })
-    .join(" · ");
+      const fixedIncome = movement.status === "booked" ? ` (${text.fixedIncomeEntries[movement.kind]} · ${movement.reference})` : "";
+      return `${format.calendarDate(movement.valueDate)}: ${sign}${format.decimal(movement.amountCents)}${open}${fixedIncome}`;
+    });
+  const difference = statementVarianceCents(statement);
+  if (difference !== 0) descriptions.push(text.reviewDifference(format.signedCurrency(difference)));
+  return descriptions.join(" · ") || null;
 }
 
 /** Sum of the booked movements of one kind, or `null` when there are none. */
@@ -87,13 +88,13 @@ export type InvestorStatementRow = {
   fullName: string;
   statusLabel: string;
   /** One statement per exported month, oldest first. */
-  statements: MonthStatement[];
+  statements: StatementFigures[];
 };
 
 /** All investors side by side: per month the investment on the 1st, the return and the miscellaneous movements. */
 export function buildInvestorsStatementCsv(
   rows: InvestorStatementRow[],
-  months: IsoMonth[],
+  periods: (IsoMonth | StatementPeriod)[],
   text: CsvText,
   format: Formatter,
   delimiter: string,
@@ -102,17 +103,19 @@ export function buildInvestorsStatementCsv(
     { header: text.investorId, value: (row) => row.investorCode },
     { header: text.investor, value: (row) => row.fullName },
     { header: text.status, value: (row) => row.statusLabel },
-    ...months.flatMap((month, index): CsvColumn<InvestorStatementRow>[] => {
-      const label = format.monthShort(month);
+    ...periods.flatMap((period, index): CsvColumn<InvestorStatementRow>[] => {
+      const label = typeof period === "string" ? format.monthShort(period) : statementPeriodLabel(period, format);
+      const opening = typeof period === "string" ? text.investmentOn(label) : text.openingOn(format.calendarDate(period.from));
       return [
-        { header: text.investmentOn(label), value: (row) => amount(format, row.statements[index].openingCents) },
+        { header: opening, value: (row) => amount(format, row.statements[index].openingCents) },
         { header: text.returnFor(label), value: (row) => amount(format, row.statements[index].returnCents) },
         {
           header: text.miscFor(label),
-          value: (row) => describeMovements(row.statements[index].movements, text, format),
+          value: (row) => describeMovements(row.statements[index], text, format),
         },
       ];
     }),
+    { header: text.closingBalance, value: (row) => amount(format, row.statements.at(-1)?.closingCents ?? null) },
   ];
   return buildCsv(columns, rows, delimiter);
 }
@@ -133,7 +136,8 @@ export function buildInvestorStatementCsv(
     { header: text.monthReturn, value: (statement) => amount(format, statement.returnCents) },
     { header: text.deposits, value: (statement) => amount(format, bookedTotal(statement.movements, "deposit")) },
     { header: text.withdrawals, value: (statement) => amount(format, bookedTotal(statement.movements, "withdrawal")) },
-    { header: text.misc, value: (statement) => describeMovements(statement.movements, text, format) },
+    { header: text.misc, value: (statement) => describeMovements(statement, text, format) },
+    { header: text.closingBalance, value: (statement) => amount(format, statement.closingCents) },
   ];
   return buildCsv(columns, statements, delimiter);
 }

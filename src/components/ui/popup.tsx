@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useRef, type ReactNode } from "react";
+import { useId, useRef, useState, type ReactNode } from "react";
 import { useMessages } from "@/i18n/client";
 import { cn } from "@/lib/cn";
 import { buttonStyles } from "./button";
@@ -35,7 +35,8 @@ type PopupProps = {
   /** Close once a form inside is submitted, e.g. a download that keeps the page open. */
   closeOnSubmit?: boolean;
   size?: keyof typeof sizeStyles;
-  children: ReactNode;
+  /** A render function mounts fresh content on each open and receives a way to close the dialog. */
+  children: ReactNode | ((close: () => void) => ReactNode);
 };
 
 /**
@@ -56,6 +57,8 @@ export function Popup({
 }: PopupProps) {
   const messages = useMessages();
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const [openDialog, setOpenDialog] = useState<HTMLDialogElement | null>(null);
+  const lazy = typeof children === "function";
   const titleId = useId();
   const close = () => dialogRef.current?.close();
 
@@ -66,7 +69,12 @@ export function Popup({
         aria-haspopup="dialog"
         aria-label={triggerLabel}
         title={triggerTitle}
-        onClick={() => dialogRef.current?.showModal()}
+        onClick={() => {
+          const dialog = dialogRef.current;
+          if (!dialog) return;
+          dialog.showModal();
+          if (lazy) setOpenDialog(dialog);
+        }}
         className={triggerClassName ?? buttonStyles({ variant: "secondary" })}
       >
         {trigger}
@@ -74,6 +82,7 @@ export function Popup({
       <dialog
         ref={dialogRef}
         aria-labelledby={titleId}
+        onClose={lazy ? (event) => { if (!event.currentTarget.open) setOpenDialog(null); } : undefined}
         // The dialog itself is only hit outside its content, i.e. on the backdrop.
         onClick={(event) => {
           if (event.target === event.currentTarget) {
@@ -103,7 +112,7 @@ export function Popup({
             <Icon name="close" className="size-4" />
           </button>
         </div>
-        <div className="px-5 pb-5">{children}</div>
+        <div className="px-5 pb-5">{lazy ? (openDialog && children(() => openDialog.close())) : children}</div>
       </dialog>
     </>
   );

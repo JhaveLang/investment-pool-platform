@@ -6,7 +6,7 @@ import { depositFeeCents, type PaymentMethod } from "@/lib/fees";
 import { formatIsoDate } from "@/lib/format";
 import { getDb, type DbTransaction } from "@/server/db/client";
 import { accounts, deposits, type Deposit, type DepositStatus } from "@/server/db/schema";
-import { loadReservedPayoutCents } from "@/server/queries/accrual";
+import { loadActivePromoStandardReserveCents, loadReservedPayoutCents, loadReservedPromoBookingCents } from "@/server/queries/accrual";
 import { getPoolSettings } from "@/server/queries/pool-settings";
 import { recordAudit } from "./audit";
 import { generateReference, lockAccountForUser, postLedgerEntry } from "./ledger";
@@ -147,7 +147,7 @@ export async function reconcileDeposit(input: ReconcileDepositInput): Promise<nu
  * Cancels a deposit whose funds never arrived. Nothing was credited, so nothing is booked.
  * A deposit submitted before the approval rule was already credited: its credited amount
  * (deposit minus fee) is reversed in one entry, which fails with INSUFFICIENT_FUNDS if that
- * money has been withdrawn or is reserved for a pending withdrawal.
+ * money has been withdrawn or is reserved for a withdrawal or fixed income investment.
  */
 export async function rejectDeposit(input: ReviewInput): Promise<number> {
   return getDb().transaction(async (tx) => {
@@ -159,8 +159,10 @@ export async function rejectDeposit(input: ReviewInput): Promise<number> {
         .from(accounts)
         .where(eq(accounts.id, deposit.accountId))
         .for("update");
-      const reservedCents = await loadReservedPayoutCents(tx, deposit.accountId);
-      if (account.balanceCents - creditedCents(deposit) < reservedCents) {
+      const reservedPayoutCents = await loadReservedPayoutCents(tx, deposit.accountId);
+      const pendingTransferCents = await loadReservedPromoBookingCents(tx, deposit.accountId);
+      const standardReserveCents = await loadActivePromoStandardReserveCents(tx, deposit.accountId);
+      if (account.balanceCents - creditedCents(deposit) < reservedPayoutCents + pendingTransferCents + standardReserveCents) {
         throw new DomainError("INSUFFICIENT_FUNDS");
       }
       await postLedgerEntry(tx, {

@@ -128,11 +128,15 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
         </div>
       </section>
 
-      {/* Key figures; on phones only the balance hero */}
-      <section className="mb-4 grid gap-4 lg:mb-6 lg:grid-cols-2 xl:grid-cols-4">
+      <section className="mb-4 grid gap-4 lg:mb-6 lg:grid-cols-2">
+        <div className="grid min-w-0 lg:col-start-2 lg:row-start-1">
+          <AvailabilityDonut overview={overview} />
+        </div>
         <BalanceHero overview={overview} trend={trend} latestRate={latestRate} />
+      </section>
+
+      <section className="mb-6 hidden gap-4 lg:grid lg:grid-cols-3">
         <StatCard
-          className="hidden lg:flex"
           label={text.available}
           value={format.currency(overview.availableCents)}
           aside={
@@ -150,7 +154,6 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
           </div>
         </StatCard>
         <StatCard
-          className="hidden lg:flex"
           label={text.locked}
           value={format.currency(overview.lockedCents)}
           aside={<DeltaChip value={text.daysChip(MINIMUM_TERM_DAYS)} />}
@@ -171,7 +174,6 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
           </div>
         </StatCard>
         <StatCard
-          className="hidden lg:flex"
           label={latestReturn ? text.returnFor(format.month(latestReturn.month)) : text.returnsTitle}
           value={latestReturn ? format.signedCurrency(latestReturn.amountCents) : format.currency(0)}
           aside={
@@ -301,9 +303,6 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
             <MoveMoneyPreview availableCents={overview.availableCents} />
           </div>
           <OpenRequests deposits={recentDeposits} withdrawals={recentWithdrawals} />
-          <div className="hidden lg:block">
-            <AvailabilityDonut overview={overview} />
-          </div>
         </aside>
       </div>
     </>

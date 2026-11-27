@@ -2,6 +2,7 @@ import type { IsoDate, IsoMonth } from "@/lib/calendar";
 
 /** Facts shown on the public website (start page, contact, footer). */
 export const SITE = {
+  trustpilotUrl: "https://www.trustpilot.com/review/bitcoin-magazin-pool.com",
   /** General enquiries; answered by the team. */
   contactEmail: "bitcoin-magazin-pool-team1@online.ms",
   /** Sends the account statements. */

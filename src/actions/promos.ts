@@ -10,6 +10,9 @@ import { requireAdmin, requireInvestor } from "@/server/auth/guards";
 import { getClientIp } from "@/server/request";
 import { createPromoOffer, markPromoConfirmationSent, processReadyPromoBookings, requestPromoBooking, settleMaturedPromoBookings, settleMaturedPromoReturns, updatePromoOffer } from "@/server/services/promos";
 import { todayIsoDate } from "@/lib/calendar";
+import { isPromoBookable, maxPromoBookingCents, MIN_STANDARD_POOL_BALANCE_CENTS } from "@/lib/promo";
+import { getAccountOverview } from "@/server/queries/investor";
+import { getPromoOffer } from "@/server/queries/promos";
 
 function readValues(formData: FormData) {
   return {
@@ -50,7 +53,13 @@ export async function createPromoAction(_previousState: ActionState, formData: F
   redirect("/admin/promos?created=1");
 }
 
-export async function updatePromoAction(promoId: string, _previousState: ActionState, formData: FormData): Promise<ActionState> {
+export async function updatePromoAction(promoId: string, previousState: ActionState, formData: FormData): Promise<ActionState> {
+  const result = await savePromoEditsAction(promoId, previousState, formData);
+  if (result.status === "success") redirect("/admin/promos?saved=1");
+  return result;
+}
+
+export async function savePromoEditsAction(promoId: string, _previousState: ActionState, formData: FormData): Promise<ActionState> {
   const admin = await requireAdmin();
   const { locale, messages } = await getI18n();
   const schemas = getSchemas(locale);
@@ -66,7 +75,8 @@ export async function updatePromoAction(promoId: string, _previousState: ActionS
     return failure.status === "error" ? { ...failure, values } : failure;
   }
   revalidatePath("/promos");
-  redirect("/admin/promos?saved=1");
+  revalidatePath("/admin/promos");
+  return successState(messages.admin.promos.saved);
 }
 
 export async function setPromoVisibilityAction(promoId: string, visible: boolean): Promise<ActionState> {
@@ -84,7 +94,7 @@ export async function setPromoVisibilityAction(promoId: string, visible: boolean
   return successState(visible ? messages.admin.promos.shownDone : messages.admin.promos.hiddenDone);
 }
 
-export async function settlePromoMaturitiesAction(_previousState: ActionState, _formData: FormData): Promise<ActionState> {
+export async function settlePromoMaturitiesAction(): Promise<ActionState> {
   const admin = await requireAdmin();
   const { messages, format } = await getI18n();
   try {
@@ -97,6 +107,19 @@ export async function settlePromoMaturitiesAction(_previousState: ActionState, _
   } catch (error) {
     return toErrorState(error, messages);
   }
+}
+
+export async function checkPromoBookingAction(promoId: string) {
+  const user = await requireInvestor();
+  const [offer, { messages, format }] = await Promise.all([getPromoOffer(promoId), getI18n()]);
+  if (!offer || !isPromoBookable(offer, todayIsoDate())) {
+    return { message: messages.domainErrors.PROMO_NOT_BOOKABLE, showBalanceDetails: false };
+  }
+  const overview = await getAccountOverview(user.id);
+  if (maxPromoBookingCents(offer, overview) > 0) return null;
+  const required = format.currency(offer.minDepositCents + MIN_STANDARD_POOL_BALANCE_CENTS);
+  const reserve = format.currency(MIN_STANDARD_POOL_BALANCE_CENTS);
+  return { message: messages.admin.promos.notEnoughTransferable(required, reserve), showBalanceDetails: true };
 }
 
 export async function bookPromoAction(_previousState: ActionState, formData: FormData): Promise<ActionState> {
@@ -118,7 +141,7 @@ export async function bookPromoAction(_previousState: ActionState, formData: For
   redirect(`/promos?requested=${encodeURIComponent(reference)}`);
 }
 
-export async function processReadyPromoBookingsAction(_previousState: ActionState, _formData: FormData): Promise<ActionState> {
+export async function processReadyPromoBookingsAction(): Promise<ActionState> {
   const admin = await requireAdmin(); const { messages } = await getI18n();
   try {
     const count = await processReadyPromoBookings({ adminId: admin.id, ipAddress: await getClientIp(), today: todayIsoDate() });
@@ -136,7 +159,7 @@ export async function markPromoConfirmationSentAction(bookingId: string): Promis
   } catch (error) { return toErrorState(error, messages); }
 }
 
-export async function settlePromoBookingMaturitiesAction(_previousState: ActionState, _formData: FormData): Promise<ActionState> {
+export async function settlePromoBookingMaturitiesAction(): Promise<ActionState> {
   const admin = await requireAdmin(); const { messages, format } = await getI18n();
   try {
     const result = await settleMaturedPromoBookings({ adminId: admin.id, ipAddress: await getClientIp(), today: todayIsoDate() });

@@ -3,8 +3,10 @@ import { addMonths, firstDayOfMonth, lastDayOfMonth, type IsoMonth } from "./cal
 import {
   buildMonthStatement,
   buildMonthStatements,
+  buildPeriodStatement,
   buildStatements,
   firstStatementMonth,
+  statementVarianceCents,
   type MonthStatement,
   type StatementEntry,
   type StatementMovement,
@@ -48,11 +50,45 @@ const movements: StatementMovement[] = [
   },
 ];
 
+describe("buildPeriodStatement", () => {
+  function figures(from: string, to = from) {
+    return buildPeriodStatement(entries, movements, { value: from, from, to });
+  }
+
+  it("counts only that day's bookings and carries prior postings into the opening", () => {
+    expect(figures("2026-09-26")).toEqual({
+      openingCents: 790_085, closingCents: 897_485, returnCents: null, movements: [movements[1]],
+    });
+  });
+
+  it("attributes a booked return once at month-end and carries it into the next day's opening", () => {
+    expect(figures("2026-09-29").returnCents).toBeNull();
+    expect(figures("2026-09-30")).toMatchObject({ openingCents: 897_485, returnCents: 41_579, closingCents: 939_064 });
+    expect(figures("2026-10-01")).toMatchObject({ openingCents: 939_064, returnCents: null, closingCents: 939_064 });
+  });
+
+  it("agrees with the existing full monthly statement", () => {
+    expect({ month: "2026-09", ...figures("2026-09-01", "2026-09-30") }).toEqual(
+      buildMonthStatement(entries, movements, "2026-09"),
+    );
+  });
+
+  it("includes the entire year's booked returns and lists pending requests without debiting the closing balance", () => {
+    const result = buildPeriodStatement([
+      ...entries, { valueDate: "2026-11-01", returnMonth: "2026-10", amountCents: -2_000 },
+    ], movements, { value: "2026", from: "2026-01-01", to: "2026-11-27" });
+    expect(result).toMatchObject({ openingCents: null, closingCents: 937_064, returnCents: 39_579 });
+    expect(result.movements[0]).toEqual(movements[2]);
+    expect(figures("2025-12-31")).toEqual({ openingCents: null, closingCents: null, returnCents: null, movements: [] });
+  });
+});
+
 describe("buildMonthStatement", () => {
   it("reproduces the sheet: investment on the 1st, return and movements", () => {
     const september = buildMonthStatement(entries, movements, "2026-09");
     expect(september.openingCents).toBe(831_585);
     expect(september.returnCents).toBe(41_579);
+    expect(september.closingCents).toBe(939_064);
     expect(september.movements.map((movement) => movement.valueDate)).toEqual(["2026-09-26", "2026-09-06"]);
     expect(buildMonthStatement(entries, movements, "2026-10").openingCents).toBe(939_064);
   });
@@ -78,6 +114,24 @@ describe("buildMonthStatement", () => {
     const october = buildMonthStatement(entries, movements, "2026-10");
     expect(october.movements).toEqual([movements[2]]);
     expect(buildMonthStatement(entries, movements, "2026-11").openingCents).toBe(939_064 + 0);
+  });
+});
+
+describe("statementVarianceCents", () => {
+  it("reconciles booked movements, ignores unbooked requests, and flags an unexplained debit", () => {
+    const [september, october] = buildMonthStatements(entries, movements, ["2026-09", "2026-10"]);
+    expect(statementVarianceCents(september)).toBe(0);
+    expect(statementVarianceCents(october)).toBe(0);
+    const statement = buildMonthStatement(
+      [...entries, { valueDate: "2026-09-30", amountCents: -1_500, returnMonth: null }], movements, "2026-09",
+    );
+    expect(statementVarianceCents(statement)).toBe(-1_500);
+  });
+
+  it("flags a booked deposit missing from the ledger even before the first ledger posting", () => {
+    const statement = buildMonthStatement([], [movements[1]], "2026-09");
+    expect(statement.closingCents).toBeNull();
+    expect(statementVarianceCents(statement)).toBe(-107_400);
   });
 });
 
@@ -109,9 +163,11 @@ function referenceMonthStatement(
   );
   const returns = entries.filter((entry) => entry.returnMonth === month);
   const total = (list: StatementEntry[]) => list.reduce((sum, entry) => sum + entry.amountCents, 0);
+  const throughMonth = entries.filter((entry) => entry.returnMonth === null ? entry.valueDate <= end : entry.returnMonth <= month);
   return {
     month,
     openingCents: before.length > 0 ? total(before) : null,
+    closingCents: throughMonth.length > 0 ? total(throughMonth) : null,
     returnCents: returns.length > 0 ? total(returns) : null,
     movements: movements
       .filter((movement) => movement.valueDate >= start && movement.valueDate <= end)

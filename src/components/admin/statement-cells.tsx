@@ -1,9 +1,8 @@
 import { Popup } from "@/components/ui/popup";
 import { buttonStyles } from "@/components/ui/button";
 import { getI18n } from "@/i18n/server";
-import type { IsoMonth } from "@/lib/calendar";
 import { cn } from "@/lib/cn";
-import type { StatementMovement } from "@/lib/statements";
+import { statementVarianceCents, type StatementFigures, type StatementMovement } from "@/lib/statements";
 
 /** An amount of the monthly statement, or "–" when there is none (nothing booked yet, return not booked). */
 export async function StatementAmount({ cents, signed = false }: { cents: number | null; signed?: boolean }) {
@@ -21,6 +20,19 @@ export async function StatementAmount({ cents, signed = false }: { cents: number
   );
 }
 
+export async function StatementClosingAmount({ statement }: { statement?: StatementFigures }) {
+  const difference = statement ? statementVarianceCents(statement) : 0;
+  const amount = <StatementAmount cents={statement?.closingCents ?? null} />;
+  if (difference === 0) return amount;
+  const { messages, format } = await getI18n();
+  return (
+    <>
+      {amount}
+      <span className="block text-xs font-medium text-loss">{messages.csv.reviewDifference(format.signedCurrency(difference))}</span>
+    </>
+  );
+}
+
 /** How many movements the cell shows before "+N"; the popup lists them all. */
 const TRIMMED_MOVEMENTS = 2;
 
@@ -31,20 +43,19 @@ function MovementAmount({ movement, label }: { movement: StatementMovement; labe
 type StatementMovementsProps = {
   movements: StatementMovement[];
   investorName: string;
-  month: IsoMonth;
+  periodLabel: string;
 };
 
 /**
- * The month's deposits and withdrawals, newest first, trimmed to one line ("+1.074,00 € (26.09.) … +2"); a click opens
+ * The month's movements, newest first, trimmed to one line ("+1.074,00 € (26.09.) … +2"); a click opens
  * a popup with all of them, their reference and status, and the booked total. Open requests are marked.
  */
-export async function StatementMovements({ movements, investorName, month }: StatementMovementsProps) {
+export async function StatementMovements({ movements, investorName, periodLabel }: StatementMovementsProps) {
   const { messages, format } = await getI18n();
   if (movements.length === 0) {
     return <span className="text-subtle">{messages.common.emptyValue}</span>;
   }
   const text = messages.admin.investorMonth;
-  const monthLabel = format.month(month);
   const hidden = movements.length - TRIMMED_MOVEMENTS;
   const sum = (list: StatementMovement[]) => list.reduce((total, movement) => total + movement.amountCents, 0);
   const booked = movements.filter((movement) => movement.booked);
@@ -52,14 +63,14 @@ export async function StatementMovements({ movements, investorName, month }: Sta
 
   return (
     <Popup
-      title={text.miscTitle(monthLabel)}
+      title={text.miscTitle(periodLabel)}
       description={text.miscDescription(investorName)}
-      triggerLabel={text.showMisc(investorName, monthLabel)}
+      triggerLabel={text.showMisc(investorName, periodLabel)}
       triggerClassName={buttonStyles({ variant: "ghost", size: "sm", className: "-mx-1.5 gap-3 px-1.5 text-left font-normal whitespace-nowrap" })}
       trigger={
         <>
           {movements.slice(0, TRIMMED_MOVEMENTS).map((movement) => (
-            <span key={movement.reference}>
+            <span key={`${movement.kind}-${movement.reference}`}>
               <MovementAmount movement={movement} label={format.signedCurrency(movement.amountCents)} />{" "}
               <span className="text-subtle">
                 ({format.dayMonth(movement.valueDate)}
@@ -77,7 +88,7 @@ export async function StatementMovements({ movements, investorName, month }: Sta
     >
       <ul className="divide-y divide-line border-y border-line">
         {movements.map((movement) => (
-          <li key={movement.reference} className="flex items-start justify-between gap-4 py-2.5 text-sm">
+          <li key={`${movement.kind}-${movement.reference}`} className="flex items-start justify-between gap-4 py-2.5 text-sm">
             <div className="min-w-0">
               <p className="font-medium text-fg">{messages.entryTypes[movement.kind]}</p>
               <p className="text-xs text-subtle">
@@ -91,7 +102,7 @@ export async function StatementMovements({ movements, investorName, month }: Sta
               <p className="text-xs text-subtle">
                 {movement.kind === "deposit"
                   ? messages.depositStatus[movement.status]
-                  : messages.withdrawalStatus[movement.status]}
+                  : movement.kind === "withdrawal" ? messages.withdrawalStatus[movement.status] : messages.admin.promos.statusBooked}
               </p>
             </div>
           </li>

@@ -170,7 +170,7 @@ export function InvestorCodeEditor({ children }: { children: ReactNode }) {
       const { submitter } = event;
       ask(
         () => form.requestSubmit(submitter),
-        () => restoreSelects(form),
+        submitter ? undefined : () => restoreSelects(form),
       );
     };
 
@@ -358,10 +358,16 @@ export function InvestorCodeSaveBar() {
   }
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <Button onClick={save} disabled={pending} aria-busy={pending}>
+      <Button size="sm" className="h-8 rounded-none whitespace-nowrap" onClick={save} disabled={pending} aria-busy={pending}>
         {pending ? text.savePending : text.save(changedCount)}
       </Button>
-      <Button variant="secondary" onClick={discardAll} disabled={pending}>
+      <Button
+        size="sm"
+        variant="danger"
+        className="h-8 rounded-none border-loss bg-loss whitespace-nowrap text-white hover:brightness-90 active:border-loss active:bg-loss active:text-white"
+        onClick={discardAll}
+        disabled={pending}
+      >
         {text.discard}
       </Button>
       {state.status === "error" && !pending ? (

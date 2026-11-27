@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ActivityLogTable } from "@/components/admin/activity-log-table";
-import { StatementAmount, StatementMovements } from "@/components/admin/statement-cells";
+import { StatementAmount, StatementClosingAmount, StatementMovements } from "@/components/admin/statement-cells";
 import { StatementExport } from "@/components/admin/statement-export";
 import { DepositHistory, WithdrawalHistory } from "@/components/transactions/request-history";
 import { TransactionTable } from "@/components/transactions/transaction-table";
@@ -148,6 +148,7 @@ export default async function AdminInvestorViewPage({ params, searchParams }: Pa
                   <TableHeaderCell className="text-right">{text.investment}</TableHeaderCell>
                   <TableHeaderCell className="text-right">{text.return}</TableHeaderCell>
                   <TableHeaderCell>{text.misc}</TableHeaderCell>
+                  <TableHeaderCell className="text-right">{messages.admin.investorMonth.closingBalance}</TableHeaderCell>
                 </tr>
               </thead>
               <TableBody>
@@ -166,8 +167,11 @@ export default async function AdminInvestorViewPage({ params, searchParams }: Pa
                       <StatementMovements
                         movements={statement.movements}
                         investorName={investor.fullName}
-                        month={statement.month}
+                        periodLabel={format.month(statement.month)}
                       />
+                    </TableCell>
+                    <TableCell className="text-right whitespace-nowrap">
+                      <StatementClosingAmount statement={statement} />
                     </TableCell>
                   </tr>
                 ))}

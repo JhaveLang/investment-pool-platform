@@ -12,6 +12,7 @@ import { todayIsoDate } from "@/lib/calendar";
 import { requireAdmin } from "@/server/auth/guards";
 import { listDuePromoMaturities, listPromoBookings, listPromoOffers } from "@/server/queries/promos";
 import { PromoVisibilityButton } from "@/components/admin/promo-visibility-button";
+import { EditPromoButton } from "@/components/admin/promo-form";
 import { PromoMaturitySettlement } from "@/components/admin/promo-maturity-settlement";
 import { MarkPromoConfirmationSent, ProcessPromoBookings, SettlePromoBookings } from "@/components/admin/promo-booking-actions";
 import { promoMaturityPayoutCents } from "@/lib/promo";
@@ -95,7 +96,7 @@ export default async function AdminPromosPage({ searchParams }: PageProps<"/admi
                 <TableCell>{format.rate(offer.totalReturnBps * 100)}</TableCell>
                 <TableCell><Badge tone={offer.visible && !offer.isExample && offer.bookingUntil >= today ? "success" : "neutral"}>{offer.bookingUntil < today ? text.closed : offer.isExample ? text.example : offer.visible ? text.bookable : text.hiddenStatus}</Badge></TableCell>
                 <TableCell className="min-w-36"><div className="inline-flex items-start gap-2">
-                  <Link href={`/admin/promos/${offer.id}/edit`} className={buttonStyles({ variant: "secondary", size: "sm" })}><Icon name="pencil" className="size-3.5" />{text.edit}</Link>
+                  <EditPromoButton offer={offer} />
                   <PromoVisibilityButton promoId={offer.id} name={offer.name} visible={offer.visible} />
                 </div></TableCell>
               </tr>

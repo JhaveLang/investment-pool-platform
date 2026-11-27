@@ -1,11 +1,12 @@
 import type { DepositStatus, WithdrawalStatus } from "@/server/db/schema";
-import { addMonths, monthOf, type IsoDate, type IsoMonth } from "./calendar";
+import { addMonths, lastDayOfMonth, monthOf, type IsoDate, type IsoMonth } from "./calendar";
+import type { StatementPeriod } from "./statement-period";
 
 /**
  * Monthly statement per investor, in the pool's month-end convention: the investment on the 1st, the month's return
- * and the month's deposits and withdrawals ("Sonstiges"). Amounts count on their value date: a deposit on its
- * receipt date, a withdrawal on its request date, and a month's return from the 1st of the following month. So the
- * 1st of next month = 1st of this month + this month's return + this month's booked deposits and withdrawals.
+ * and all its booked movements ("Sonstiges"). A deposit counts on its receipt date, a withdrawal on its request
+ * date, and fixed-income transfers and payouts on their posting dates. The booked monthly result carries forward
+ * into the next month's opening. The ledger provides the closing balance independently of the itemized requests.
  */
 
 /** Booked ledger amounts summed per value date (and per return month for returns). */
@@ -16,9 +17,12 @@ export type StatementEntry = {
   returnMonth: IsoMonth | null;
 };
 
-/** A deposit or withdrawal listed under "Sonstiges", with its net effect on the balance. */
+export type FixedIncomeMovement = "promo_transfer" | "promo_principal_return" | "promo_return";
+
+/** A request or fixed-income posting listed under "Sonstiges", with its net effect on the balance. */
 export type StatementMovement = (
   { kind: "deposit"; status: DepositStatus } | { kind: "withdrawal"; status: WithdrawalStatus }
+  | { kind: FixedIncomeMovement; status: "booked" }
 ) & {
   /** The request's reference, e.g. "EZ-3VX5PAEY". */
   reference: string;
@@ -31,15 +35,47 @@ export type StatementMovement = (
   booked: boolean;
 };
 
-export type MonthStatement = {
-  month: IsoMonth;
-  /** Balance on the 1st; `null` when nothing was booked before the month. */
+export type StatementFigures = {
+  /** Balance before the first day; null before the first booking. */
   openingCents: number | null;
+  /** Opening plus all ledger postings attributed to this month, including the booked monthly result. */
+  closingCents: number | null;
   /** The month's return once booked, else `null`. */
   returnCents: number | null;
-  /** The month's deposits and withdrawals, newest first (cancelled and rejected ones are left out). */
+  /** Requests and fixed-income postings, newest first (cancelled and rejected requests are left out). */
   movements: StatementMovement[];
 };
+
+/** Ledger closing balance minus the opening, booked monthly return and itemized booked movements. */
+export function statementVarianceCents(statement: StatementFigures): number {
+  const bookedMovements = statement.movements.reduce((sum, movement) => sum + (movement.booked ? movement.amountCents : 0), 0);
+  return (statement.closingCents ?? 0) - (statement.openingCents ?? 0) - (statement.returnCents ?? 0) - bookedMovements;
+}
+
+export type MonthStatement = StatementFigures & { month: IsoMonth };
+
+/** Attribute booked monthly returns to the last day of the earning month, consistent with the next opening. */
+export function buildPeriodStatement(
+  entries: readonly StatementEntry[],
+  movements: readonly StatementMovement[],
+  { from, to }: StatementPeriod,
+): StatementFigures {
+  let openingCents: number | null = null;
+  let closingCents: number | null = null;
+  let returnCents: number | null = null;
+  for (const entry of entries) {
+    const day = entry.returnMonth ? lastDayOfMonth(entry.returnMonth) : entry.valueDate;
+    if (day > to) continue;
+    closingCents = (closingCents ?? 0) + entry.amountCents;
+    if (day < from) openingCents = (openingCents ?? 0) + entry.amountCents;
+    else if (entry.returnMonth) returnCents = (returnCents ?? 0) + entry.amountCents;
+  }
+  return {
+    openingCents, closingCents, returnCents,
+    movements: movements.filter((movement) => movement.valueDate >= from && movement.valueDate <= to)
+      .sort((left, right) => right.valueDate.localeCompare(left.valueDate)),
+  };
+}
 
 /** A sum of entries, with their count: no entries (`null` in the statement) differ from entries summing to zero. */
 type Total = { cents: number; count: number };
@@ -92,10 +128,12 @@ export function buildMonthStatements(
 
   return months.map((month) => {
     const openingTotal = openingByMonth.get(month)!;
+    const activity = countedAfter.get(month);
     const returns = returnsByMonth.get(month);
     return {
       month,
       openingCents: openingTotal.count > 0 ? openingTotal.cents : null,
+      closingCents: openingTotal.count > 0 || activity !== undefined ? openingTotal.cents + (activity?.cents ?? 0) : null,
       returnCents: returns ? returns.cents : null,
       movements: (movementsByMonth.get(month) ?? []).toSorted((left, right) =>
         right.valueDate.localeCompare(left.valueDate),
